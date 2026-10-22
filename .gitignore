@@ -13,6 +13,11 @@ out/
 # Turbo
 .turbo/
 
+# Cloudflare / OpenNext
+.open-next/
+.wrangler/
+.dev.vars
+
 # Environment
 .env
 .env.local

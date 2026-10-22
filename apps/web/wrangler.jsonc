@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "suluhu-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-12-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // Frontend talks to the existing VPS-hosted NestJS API — same API this app
+  // points at today, now injected at the edge instead of only at Docker build time.
+  // NEXT_PUBLIC_* vars are still inlined into the client bundle at `opennextjs-cloudflare build`
+  // time (see package.json "cf:build"), so this entry matters for any server-side
+  // fetches that read process.env at request time; keep it in sync with the value
+  // baked in at build time. Override per-environment below, or with `wrangler deploy --var`.
+  "vars": {
+    "NEXT_PUBLIC_API_URL": "https://api.suluhutherapy.co.ke"
+  }
+
+  // Optional, not enabled by default — see apps/web/CLOUDFLARE.md "Optional extras":
+  // "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "suluhu-web" }],
+  // "r2_buckets": [{ "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "suluhu-web-cache" }],
+  // "images": { "binding": "IMAGES" }
+}
