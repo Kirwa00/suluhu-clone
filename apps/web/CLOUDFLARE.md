@@ -1,4 +1,37 @@
-# Deploying apps/web to Cloudflare Workers
+# Deploying apps/web to Cloudflare Workers (suluhutherapy.com)
+
+**Target:** the `suluhu-web` Worker serves the web app on
+`suluhutherapy.com` and `www.suluhutherapy.com` (that zone's DNS is on
+Cloudflare). The API stays on the VPS at `api.suluhutherapy.co.ke`.
+
+### One-time setup checklist
+
+1. **Cloudflare DNS (suluhutherapy.com zone):** delete the existing `A`/`CNAME`
+   records for `suluhutherapy.com` and `www` (they point at the VPS). The
+   Worker's custom domains (`routes` in `wrangler.jsonc`) create their own
+   records + certificates on the first deploy and fail if a record exists.
+2. **API CORS (VPS `/opt/suluhu/.env.production`):** add the new origins and
+   restart the API:
+   `CORS_ORIGINS=https://suluhutherapy.co.ke,https://suluhutherapy.com,https://www.suluhutherapy.com`
+3. **Caddy (VPS):** set `WEB_DOMAIN_REDIRECT` so it no longer lists
+   `suluhutherapy.com` (or delete that Caddyfile block) — the Worker owns the
+   hostname now and Caddy's Let's Encrypt renewals for it would fail.
+4. **Google sign-in:** add `https://suluhutherapy.com` and
+   `https://www.suluhutherapy.com` to the OAuth client's *Authorized
+   JavaScript origins* in Google Cloud Console, and provide
+   `NEXT_PUBLIC_GOOGLE_CLIENT_ID` at build time (env var locally, repo
+   variable in GitHub Actions). Without it the Google button is hidden.
+5. **Deploy credentials:** a Cloudflare API token with *Workers Scripts:Edit*,
+   *Workers Routes:Edit* and *DNS:Edit* (zone suluhutherapy.com), plus the
+   account ID. Locally: `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` env
+   vars (or `npx wrangler login`). In GitHub: repo secrets of the same names,
+   used by `.github/workflows/deploy-cloudflare.yml` (runs after CI on main,
+   or manually via *Run workflow*).
+
+Build-time public values (`NEXT_PUBLIC_API_URL`) live in
+`apps/web/.env.production`; real env vars override them. `cf:build` builds the
+`@suluhu/shared` / `@suluhu/ui` workspace packages first, so a fresh
+`npm ci && npm run cf:deploy` (from `apps/web`) works end to end.
 
 This scaffolds a **hybrid** setup: the Next.js frontend (`apps/web`) can be
 deployed to Cloudflare's edge via [OpenNext for Cloudflare](https://opennext.js.org/cloudflare)
@@ -82,10 +115,9 @@ later, `@opennextjs/cloudflare` can be bumped to latest at the same time.
    This runs `opennextjs-cloudflare build` then `wrangler deploy`. First
    deploy will give you a `*.workers.dev` URL; add a custom domain (e.g.
    `suluhutherapy.co.ke`) via the Cloudflare dashboard → Workers & Pages →
-   your worker → Settings → Domains & Routes, or in `wrangler.jsonc` with a
-   `routes` entry. Cloudflare DNS is already proxying the domains today per
-   the main CLAUDE.md notes, so this is a DNS/routing change, not a new DNS
-   setup.
+   your worker → Settings → Domains & Routes. `wrangler.jsonc` already binds
+   `suluhutherapy.com` and `www.suluhutherapy.com` as custom domains, so the
+   first deploy attaches them (after step 1 of the checklist above).
 
 4. **Preview locally first (optional but recommended):**
 
