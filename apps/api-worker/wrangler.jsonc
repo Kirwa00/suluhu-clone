@@ -347,6 +347,166 @@
         "type": "ratelimit",
         "namespace_id": "1046",
         "simple": { "limit": 100, "period": 60 }
+      },
+      // Phase 5 — messaging, mood, content, clinical, analytics/payouts.
+      // Same story as every prior phase: none of these controllers carry an
+      // explicit `@Throttle(...)` in apps/api, so they all use the global
+      // default (100/min), one binding per route.
+      {
+        "name": "RATE_LIMITER_CONVERSATIONS_LIST",
+        "type": "ratelimit",
+        "namespace_id": "1047",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_CONVERSATIONS_OPEN",
+        "type": "ratelimit",
+        "namespace_id": "1048",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_CONVERSATIONS_MESSAGES_GET",
+        "type": "ratelimit",
+        "namespace_id": "1049",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_CONVERSATIONS_MESSAGES_SEND",
+        "type": "ratelimit",
+        "namespace_id": "1050",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_MOOD_CREATE",
+        "type": "ratelimit",
+        "namespace_id": "1051",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_MOOD_LIST",
+        "type": "ratelimit",
+        "namespace_id": "1052",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_CONTENT_LIST",
+        "type": "ratelimit",
+        "namespace_id": "1053",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_CONTENT_DETAIL",
+        "type": "ratelimit",
+        "namespace_id": "1054",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_CONTENT_LIST",
+        "type": "ratelimit",
+        "namespace_id": "1055",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_CONTENT_CREATE",
+        "type": "ratelimit",
+        "namespace_id": "1056",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_CONTENT_UPDATE",
+        "type": "ratelimit",
+        "namespace_id": "1057",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_CLINICAL_NOTES_UPSERT",
+        "type": "ratelimit",
+        "namespace_id": "1058",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_CLINICAL_NOTES_AI_DRAFT",
+        "type": "ratelimit",
+        "namespace_id": "1059",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_CLINICAL_NOTES_BY_APPOINTMENT",
+        "type": "ratelimit",
+        "namespace_id": "1060",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_TREATMENT_PLANS_UPSERT",
+        "type": "ratelimit",
+        "namespace_id": "1061",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_PATIENTS_NOTES",
+        "type": "ratelimit",
+        "namespace_id": "1062",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_PATIENTS_TREATMENT_PLAN",
+        "type": "ratelimit",
+        "namespace_id": "1063",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_PATIENTS_HEALTH_RECORD",
+        "type": "ratelimit",
+        "namespace_id": "1064",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_CLINICAL_CLIENTS",
+        "type": "ratelimit",
+        "namespace_id": "1065",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_REMINDERS_STATS",
+        "type": "ratelimit",
+        "namespace_id": "1066",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_METRICS",
+        "type": "ratelimit",
+        "namespace_id": "1067",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_REVENUE",
+        "type": "ratelimit",
+        "namespace_id": "1068",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_PAYOUTS_LIST",
+        "type": "ratelimit",
+        "namespace_id": "1069",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_PAYOUTS_PAY",
+        "type": "ratelimit",
+        "namespace_id": "1070",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_AUDIT_LOG",
+        "type": "ratelimit",
+        "namespace_id": "1071",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_THERAPIST_EARNINGS",
+        "type": "ratelimit",
+        "namespace_id": "1072",
+        "simple": { "limit": 100, "period": 60 }
       }
     ]
   },

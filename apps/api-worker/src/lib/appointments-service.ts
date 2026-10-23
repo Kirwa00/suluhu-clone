@@ -11,7 +11,7 @@ import { AppException } from './app-exception';
 import type { AuditService } from './audit';
 import type { NotificationsService } from './notifications';
 import type { PaymentsService } from './payments-service';
-import type { RemindersStub } from './reminders-stub';
+import type { RemindersService } from './reminders-service';
 import type { SlotsService } from './slots-service';
 import type { RequestContext } from './types';
 
@@ -33,7 +33,7 @@ export class AppointmentsService {
     private readonly payments: PaymentsService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
-    private readonly reminders: RemindersStub,
+    private readonly reminders: RemindersService,
   ) {}
 
   async create(patientUserId: string, input: CreateAppointmentInput, ctx: RequestContext) {

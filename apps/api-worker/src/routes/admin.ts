@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import {
   TherapistVerificationStatus,
   UserRole,
+  contentResourceSchema,
   paginationQuerySchema,
   reviewDecisionSchema,
   uuidSchema,
@@ -127,6 +128,105 @@ admin.post(
       dto.note,
       requestContext(c),
     );
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);
+
+// --- Psychoeducation content administration -------------------------------
+// Port of ContentController's admin routes (`admin/content*`).
+
+admin.get(
+  '/content',
+  rateLimit('RATE_LIMITER_ADMIN_CONTENT_LIST'),
+  ...requireAdmin,
+  async (c) => {
+    const result = await must(c.get('ctx')).content.adminList();
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);
+
+admin.post(
+  '/content',
+  rateLimit('RATE_LIMITER_ADMIN_CONTENT_CREATE'),
+  ...requireAdmin,
+  async (c) => {
+    const dto = contentResourceSchema.parse(await c.req.json().catch(() => ({})));
+    const adminId = must(c.get('user')).id;
+    const result = await must(c.get('ctx')).content.create(adminId, dto);
+    return c.json(successEnvelope(result, c.get('requestId')), 201);
+  },
+);
+
+admin.patch(
+  '/content/:id',
+  rateLimit('RATE_LIMITER_ADMIN_CONTENT_UPDATE'),
+  ...requireAdmin,
+  async (c) => {
+    const id = uuidSchema.parse(c.req.param('id'));
+    const dto = contentResourceSchema.parse(await c.req.json().catch(() => ({})));
+    const result = await must(c.get('ctx')).content.update(id, dto);
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);
+
+// --- Analytics, revenue, payouts, audit log ---------------------------------
+// Port of AdminAnalyticsController (`admin`).
+
+admin.get(
+  '/reminders/stats',
+  rateLimit('RATE_LIMITER_ADMIN_REMINDERS_STATS'),
+  ...requireAdmin,
+  async (c) => {
+    const result = await must(c.get('ctx')).reminders.stats();
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);
+
+admin.get('/metrics', rateLimit('RATE_LIMITER_ADMIN_METRICS'), ...requireAdmin, async (c) => {
+  const result = await must(c.get('ctx')).analytics.adminMetrics();
+  return c.json(successEnvelope(result, c.get('requestId')));
+});
+
+admin.get('/revenue', rateLimit('RATE_LIMITER_ADMIN_REVENUE'), ...requireAdmin, async (c) => {
+  const result = await must(c.get('ctx')).analytics.revenueByTherapist();
+  return c.json(successEnvelope(result, c.get('requestId')));
+});
+
+admin.get(
+  '/payouts',
+  rateLimit('RATE_LIMITER_ADMIN_PAYOUTS_LIST'),
+  ...requireAdmin,
+  async (c) => {
+    const result = await must(c.get('ctx')).analytics.payoutQueue();
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);
+
+admin.post(
+  '/payouts/:therapistId/pay',
+  rateLimit('RATE_LIMITER_ADMIN_PAYOUTS_PAY'),
+  ...requireAdmin,
+  async (c) => {
+    const therapistId = uuidSchema.parse(c.req.param('therapistId'));
+    const adminId = must(c.get('user')).id;
+    const result = await must(c.get('ctx')).analytics.payTherapist(
+      adminId,
+      therapistId,
+      requestContext(c),
+    );
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);
+
+const auditQuerySchema = paginationQuerySchema.extend({ action: z.string().trim().optional() });
+
+admin.get(
+  '/audit-log',
+  rateLimit('RATE_LIMITER_ADMIN_AUDIT_LOG'),
+  ...requireAdmin,
+  async (c) => {
+    const query = auditQuerySchema.parse(c.req.query());
+    const result = await must(c.get('ctx')).analytics.auditLog(query);
     return c.json(successEnvelope(result, c.get('requestId')));
   },
 );
