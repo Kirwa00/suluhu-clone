@@ -5,8 +5,7 @@ import { ZodError } from 'zod';
 import { Prisma } from '../generated/prisma';
 import { AppException } from './app-exception';
 import { errorEnvelope } from './response';
-import type { Bindings } from '../env';
-import type { RequestIdVariables } from '../middleware/request-id';
+import type { AppEnv } from '../types';
 
 /**
  * Converts every thrown error into the standard envelope. Never leaks stack
@@ -14,10 +13,7 @@ import type { RequestIdVariables } from '../middleware/request-id';
  * apps/api/src/common/filters/all-exceptions.filter.ts — same resolution
  * order and same error codes, so a client can't tell which backend answered.
  */
-export function onError(
-  error: unknown,
-  c: Context<{ Bindings: Bindings; Variables: RequestIdVariables }>,
-): Response {
+export function onError(error: unknown, c: Context<AppEnv>): Response {
   const requestId = c.get('requestId');
   const { status, code, message, details } = resolve(error);
 

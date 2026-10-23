@@ -6,11 +6,13 @@ adapters) + Cloudflare bindings instead of Express + raw Postgres/Redis
 connections. See the root `CLAUDE.md` / `Suluhu_Therapy_Center_SDLC_Documentation.md`
 for product context.
 
-**Status: Phase 1 (Foundation) only.** `apps/api` is still the real backend —
-`apps/web`'s `NEXT_PUBLIC_API_URL` has not changed. This Worker currently
-exposes only `/api/v1/health`, `/health/live`, `/health/ready`. Auth,
-therapists, payments, etc. land in later phases (see the delivery plan in the
-PR/issue this shipped from).
+**Status: Phases 1–2 (Foundation, Auth & users).** `apps/api` is still the
+real backend — `apps/web`'s `NEXT_PUBLIC_API_URL` has not changed. This
+Worker exposes `/api/v1/health(/live|/ready)` and the full auth/users surface
+(register, login, email MFA, Google sign-in, refresh rotation, logout, OTP
+request/verify, password forgot/reset/change, `/auth/me`, `/users/me`).
+Therapists, payments, sessions, clinical notes, etc. land in later phases
+(see the delivery plan in the PR/issue this shipped from).
 
 ## Why a second Prisma major version
 
@@ -88,6 +90,56 @@ Postgres serves `GET /api/v1/health` with `database.status: "up"` correctly
 hand after any `@cloudflare/vitest-plugin` or `pg` upgrade, and unskip the
 test once it passes.
 
+For the same reason, every auth/users flow that touches the database
+(register, login, refresh rotation, OTP, password reset/change, profile
+updates) is verified by hand via `wrangler dev` against local Postgres
+rather than by a Vitest integration test — see the Phase 2 PR description for
+the full manual test transcript (register → MFA → verify → refresh → reuse
+detection → logout → revoked-token rejection, password forgot/reset,
+duplicate-email conflict, validation errors, per-route rate limiting). What
+*is* covered in Vitest: byte-for-byte PHI-encryption and password-hash
+cross-compatibility against fixtures captured from apps/api's actual (Node)
+implementations, JWT sign/verify/blocklist (no DB needed), and rate-limiter
+isolation.
+
+## Auth & users (Phase 2) — what to know
+
+- **Password hashing**: `bcryptjs` (pure JS) instead of native `bcrypt` —
+  same `$2b$` hash format, same cost factor; existing `apps/api` password
+  hashes verify here unchanged (and vice versa), confirmed in
+  `test/password.spec.ts` against a hash produced by real `bcrypt`.
+- **PHI encryption** (`dateOfBirth` on `/users/me`): WebCrypto AES-256-GCM,
+  byte-compatible with `apps/api`'s `node:crypto` implementation — same
+  `v1.<iv>.<tag>.<data>` format, confirmed in `test/phi-crypto.spec.ts`
+  against ciphertext produced by the real Node service.
+- **JWTs**: `jose` instead of `@nestjs/jwt`, same secrets/claims/expiries
+  (HS256). Refresh tokens are still opaque, hashed, DB-rotated values — not
+  JWTs — exactly as in `apps/api`.
+- **Access-token revocation** (logout): a KV-backed blocklist
+  (`AUTH_KV`, key `access:<jti>`) replaces the Redis one, same fail-open
+  posture (a KV outage never blocks an otherwise-valid request).
+- **Google sign-in**: `jose`'s `createRemoteJWKSet` against Google's JWKS
+  instead of `google-auth-library` (which needs Node and can't run on
+  Workers) — same checks (`aud`, `iss`, `exp`, `email_verified`).
+- **Rate limiting**: one Workers Rate Limiting binding **per route**,
+  keyed by client IP — see the bindings table below for why one-per-*value*
+  wasn't enough (Nest's default tracker keys per-route, not just per limit
+  value, so e.g. `/auth/login` and `/auth/mfa/verify` have independent 5/min
+  budgets even though they share the same limit).
+- **OTP issuance throttle** (3 codes per 15 min per user+purpose — a
+  *different* check from the per-route HTTP rate limit above): a
+  read-then-write counter in `AUTH_KV`, since the Rate Limiting binding's
+  `period` only accepts 10 or 60 seconds. Best-effort under concurrent
+  requests (KV has no atomic increment) — same risk class as the fail-open
+  blocklist above, and the consequence of losing the race is a slightly
+  looser anti-abuse limit, never a security hole.
+- **Deliberate deviation**: apps/api's test-only `GET /auth/test/otp`
+  additionally 404s unless `NODE_ENV==='test'`. There's no Workers
+  equivalent to key that off of, and it's redundant with the real safety
+  boundary (`getLastMockMessage` only returns a value when the configured
+  provider is actually the mock one) — so that extra gate isn't reproduced
+  here. Still rate-limited (`RATE_LIMITER_AUTH_TEST_OTP`), same as `apps/api`.
+
 ## Deploying
 
 Cloudflare Workers Builds (recommended — fires on push, like the existing
@@ -122,20 +174,33 @@ npm run deploy      # wrangler deploy
    Copy the returned id into `wrangler.jsonc`'s `hyperdrive[0].id`
    (replacing `REPLACE_WITH_HYPERDRIVE_CONFIG_ID`).
 
-3. **R2 bucket** (Phase 3, therapist documents — declared now so the binding
+3. **KV namespace** (access-token blocklist + OTP issuance throttle):
+
+   ```bash
+   npx wrangler kv namespace create suluhu-api-auth
+   ```
+
+   Copy the returned id into `wrangler.jsonc`'s `kv_namespaces[0].id`
+   (replacing `REPLACE_WITH_KV_NAMESPACE_ID`).
+
+4. **Rate limiting bindings** — nothing to create; the `namespace_id`s under
+   `unsafe.bindings` in `wrangler.jsonc` are arbitrary small integers you pick
+   yourself (Cloudflare's docs use this pattern), not provisioned resources.
+
+5. **R2 bucket** (Phase 3, therapist documents — declared now so the binding
    exists from day one):
 
    ```bash
    npx wrangler r2 bucket create suluhu-documents
    ```
 
-4. **Queue** (Phase 5, reminders):
+6. **Queue** (Phase 5, reminders):
 
    ```bash
    npx wrangler queues create suluhu-reminders
    ```
 
-5. **Secrets** — every one of these via `wrangler secret put <NAME>` (run
+7. **Secrets** — every one of these via `wrangler secret put <NAME>` (run
    from `apps/api-worker/`):
 
    | Secret                  | Notes                                               |
@@ -157,7 +222,7 @@ npm run deploy      # wrangler deploy
    Flip the `*_MODE` vars themselves in `wrangler.jsonc`'s `vars` block (they're
    non-secret) once you're ready to go live with a given provider.
 
-6. **Custom domain.** First `wrangler deploy` with the `routes` entry in
+8. **Custom domain.** First `wrangler deploy` with the `routes` entry in
    `wrangler.jsonc` (`api.suluhutherapy.com`) creates the DNS record and
    certificate automatically, same as `apps/web`'s `suluhutherapy.com` — see
    `apps/web/CLOUDFLARE.md` for the general pattern. Delete any existing
@@ -165,15 +230,24 @@ npm run deploy      # wrangler deploy
 
 ## Bindings reference (`wrangler.jsonc`)
 
-| Binding                  | Type       | Used by          |
-| ------------------------- | ---------- | ----------------- |
-| `HYPERDRIVE`              | Hyperdrive | Phase 1 (health, then everything DB-backed) |
-| `DOCUMENTS`                | R2 Bucket  | Phase 3 (therapist documents) |
-| `REMINDERS_QUEUE`          | Queue      | Phase 5 (reminders) |
-| `RATE_LIMITER_STRICT`      | Rate Limit | Phase 2 (auth login/OTP/MFA — 10/min) |
-| `RATE_LIMITER_STANDARD`    | Rate Limit | Phase 2 (`/auth/me`, `/auth/refresh` — 100/min) |
+| Binding                             | Type       | Used by |
+| ------------------------------------ | ---------- | ------- |
+| `HYPERDRIVE`                         | Hyperdrive | Phase 1 (health, then everything DB-backed) |
+| `AUTH_KV`                            | KV         | Phase 2 (access-token blocklist, OTP issuance throttle) |
+| `DOCUMENTS`                          | R2 Bucket  | Phase 3 (therapist documents) |
+| `REMINDERS_QUEUE`                    | Queue      | Phase 5 (reminders) |
+
+Rate Limiting bindings — one **per route**, not per limit value (see
+"Auth & users (Phase 2)" above for why):
+
+| Limit    | Bindings |
+| -------- | -------- |
+| 10/min   | `RATE_LIMITER_AUTH_REGISTER`, `RATE_LIMITER_AUTH_LOGOUT`, `RATE_LIMITER_AUTH_PASSWORD_RESET`, `RATE_LIMITER_AUTH_PASSWORD_CHANGE`, `RATE_LIMITER_AUTH_TEST_OTP` |
+| 5/min    | `RATE_LIMITER_AUTH_LOGIN`, `RATE_LIMITER_AUTH_GOOGLE`, `RATE_LIMITER_AUTH_GOOGLE_REGISTER`, `RATE_LIMITER_AUTH_MFA_VERIFY`, `RATE_LIMITER_AUTH_OTP_VERIFY` |
+| 3/min    | `RATE_LIMITER_AUTH_OTP_REQUEST`, `RATE_LIMITER_AUTH_PASSWORD_FORGOT` |
+| 100/min  | `RATE_LIMITER_AUTH_REFRESH`, `RATE_LIMITER_AUTH_ME`, `RATE_LIMITER_USERS_ME_GET`, `RATE_LIMITER_USERS_ME_PATCH` |
 
 `queue()` and `scheduled()` handlers in `src/index.ts` are no-op placeholders
 today (they ack/log and return) so the Worker is valid and deployable before
-Phases 2–5 land — nothing is silently dropped, there's just nothing to do
+Phases 3–5 land — nothing is silently dropped, there's just nothing to do
 with it yet.

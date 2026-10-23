@@ -46,25 +46,131 @@
     "crons": ["*/5 * * * *"]
   },
 
-  // Workers Rate Limiting binding. One binding, `limit`/`period` chosen per
-  // call site in code — mirrors today's two throttler tiers (10/min strict
-  // auth; 100/min for /auth/me + /auth/refresh). Wired in Phase 2.
+  // Workers Rate Limiting bindings — one *per route*, matching Nest's default
+  // `ThrottlerGuard` tracker, which keys on (controller, handler, ip): two
+  // routes that happen to share the same `@Throttle(...)` limit/ttl still get
+  // independent counters, so these do too, even where several share the same
+  // (limit, period) value below. Each called with a `key` per call site (the
+  // client IP, matching that same default tracker). The binding's `period`
+  // only accepts 10 or 60 seconds, so the OTP-service's own 3-per-15-min
+  // issuance throttle (a *different*, longer window) is implemented over
+  // AUTH_KV below instead — see src/lib/otp.ts.
   "unsafe": {
     "bindings": [
+      // Class-level default (apps/api's `@Throttle({default:{limit:10,ttl:60_000}})`
+      // on AuthController): register, logout, password/reset, password/change,
+      // and the test-only otp-readback endpoint.
       {
-        "name": "RATE_LIMITER_STRICT",
+        "name": "RATE_LIMITER_AUTH_REGISTER",
         "type": "ratelimit",
         "namespace_id": "1001",
         "simple": { "limit": 10, "period": 60 }
       },
       {
-        "name": "RATE_LIMITER_STANDARD",
+        "name": "RATE_LIMITER_AUTH_LOGOUT",
         "type": "ratelimit",
         "namespace_id": "1002",
+        "simple": { "limit": 10, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_AUTH_PASSWORD_RESET",
+        "type": "ratelimit",
+        "namespace_id": "1003",
+        "simple": { "limit": 10, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_AUTH_PASSWORD_CHANGE",
+        "type": "ratelimit",
+        "namespace_id": "1004",
+        "simple": { "limit": 10, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_AUTH_TEST_OTP",
+        "type": "ratelimit",
+        "namespace_id": "1005",
+        "simple": { "limit": 10, "period": 60 }
+      },
+      // AUTH_LOGIN_RATE_LIMIT (5/min): login, google, google/register.
+      {
+        "name": "RATE_LIMITER_AUTH_LOGIN",
+        "type": "ratelimit",
+        "namespace_id": "1006",
+        "simple": { "limit": 5, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_AUTH_GOOGLE",
+        "type": "ratelimit",
+        "namespace_id": "1007",
+        "simple": { "limit": 5, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_AUTH_GOOGLE_REGISTER",
+        "type": "ratelimit",
+        "namespace_id": "1008",
+        "simple": { "limit": 5, "period": 60 }
+      },
+      // AUTH_MFA_VERIFY_RATE_LIMIT / AUTH_OTP_VERIFY_RATE_LIMIT (5/min, same value).
+      {
+        "name": "RATE_LIMITER_AUTH_MFA_VERIFY",
+        "type": "ratelimit",
+        "namespace_id": "1009",
+        "simple": { "limit": 5, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_AUTH_OTP_VERIFY",
+        "type": "ratelimit",
+        "namespace_id": "1010",
+        "simple": { "limit": 5, "period": 60 }
+      },
+      // AUTH_OTP_REQUEST_RATE_LIMIT / AUTH_PASSWORD_FORGOT_RATE_LIMIT (3/min, same value).
+      {
+        "name": "RATE_LIMITER_AUTH_OTP_REQUEST",
+        "type": "ratelimit",
+        "namespace_id": "1011",
+        "simple": { "limit": 3, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_AUTH_PASSWORD_FORGOT",
+        "type": "ratelimit",
+        "namespace_id": "1012",
+        "simple": { "limit": 3, "period": 60 }
+      },
+      // Global app-wide default (RATE_LIMIT_PER_USER_PER_MIN, 100/min): refresh, me, users/me.
+      {
+        "name": "RATE_LIMITER_AUTH_REFRESH",
+        "type": "ratelimit",
+        "namespace_id": "1013",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_AUTH_ME",
+        "type": "ratelimit",
+        "namespace_id": "1014",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_USERS_ME_GET",
+        "type": "ratelimit",
+        "namespace_id": "1015",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_USERS_ME_PATCH",
+        "type": "ratelimit",
+        "namespace_id": "1016",
         "simple": { "limit": 100, "period": 60 }
       }
     ]
   },
+
+  // Ephemeral auth state with a Redis-shaped access pattern (set-with-TTL,
+  // get, incr-ish counters) — the access-token revocation blocklist
+  // (`access:<jti>`, fail-open on error, same posture as the Redis version it
+  // replaces) and the OTP service's 3-per-15-min issuance throttle
+  // (`otp-issue:<userId>:<purpose>`, best-effort — KV is eventually
+  // consistent, acceptable for an anti-abuse counter, not a correctness
+  // guarantee). Create with `wrangler kv namespace create suluhu-api-auth`.
+  "kv_namespaces": [{ "binding": "AUTH_KV", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }],
 
   // Non-secret config. Secrets (JWT, PHI key, provider credentials, Resend
   // API key, Google client id, ...) are set with `wrangler secret put` — see

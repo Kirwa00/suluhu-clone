@@ -14,8 +14,26 @@ export interface Bindings {
   HYPERDRIVE: Hyperdrive;
   DOCUMENTS: R2Bucket;
   REMINDERS_QUEUE: Queue;
-  RATE_LIMITER_STRICT: RateLimit;
-  RATE_LIMITER_STANDARD: RateLimit;
+  // One Rate Limiting binding per route — see the comment above these in
+  // wrangler.jsonc for why (Nest's default tracker keys per-route, not just
+  // per limit value).
+  RATE_LIMITER_AUTH_REGISTER: RateLimit;
+  RATE_LIMITER_AUTH_LOGOUT: RateLimit;
+  RATE_LIMITER_AUTH_PASSWORD_RESET: RateLimit;
+  RATE_LIMITER_AUTH_PASSWORD_CHANGE: RateLimit;
+  RATE_LIMITER_AUTH_TEST_OTP: RateLimit;
+  RATE_LIMITER_AUTH_LOGIN: RateLimit;
+  RATE_LIMITER_AUTH_GOOGLE: RateLimit;
+  RATE_LIMITER_AUTH_GOOGLE_REGISTER: RateLimit;
+  RATE_LIMITER_AUTH_MFA_VERIFY: RateLimit;
+  RATE_LIMITER_AUTH_OTP_VERIFY: RateLimit;
+  RATE_LIMITER_AUTH_OTP_REQUEST: RateLimit;
+  RATE_LIMITER_AUTH_PASSWORD_FORGOT: RateLimit;
+  RATE_LIMITER_AUTH_REFRESH: RateLimit;
+  RATE_LIMITER_AUTH_ME: RateLimit;
+  RATE_LIMITER_USERS_ME_GET: RateLimit;
+  RATE_LIMITER_USERS_ME_PATCH: RateLimit;
+  AUTH_KV: KVNamespace;
 
   // --- Vars (wrangler.jsonc `vars`, non-secret) -----------------------
   API_PUBLIC_URL: string;

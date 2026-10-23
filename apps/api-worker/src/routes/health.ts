@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { createPrismaClient } from '../db/prisma';
 import type { Bindings } from '../env';
-import type { RequestIdVariables } from '../middleware/request-id';
 import { successEnvelope } from '../lib/response';
+import type { AppEnv } from '../types';
 
 type ComponentStatus = 'up' | 'down';
 
@@ -42,7 +42,7 @@ async function checkDatabase(env: Bindings): Promise<HealthReport['components'][
  *   • GET /health/live  — liveness (process is up)
  *   • GET /health/ready — readiness (dependencies reachable)
  */
-export const health = new Hono<{ Bindings: Bindings; Variables: RequestIdVariables }>();
+export const health = new Hono<AppEnv>();
 
 health.get('/', async (c) => {
   const database = await checkDatabase(c.env);
