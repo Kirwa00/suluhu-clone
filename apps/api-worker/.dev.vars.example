@@ -1,0 +1,21 @@
+# Local dev/test secrets for `wrangler dev` and `vitest` (Miniflare reads
+# `.dev.vars` the same way `wrangler dev` does). Copy to `.dev.vars` — never
+# commit the real file. Production secrets are set with `wrangler secret put`
+# (see apps/api-worker/README.md).
+
+JWT_ACCESS_SECRET=change-me-access-secret-min-32-chars-long
+JWT_REFRESH_SECRET=change-me-refresh-secret-min-32-chars-long
+# 32-byte key, base64-encoded: `openssl rand -base64 32`
+PHI_ENCRYPTION_KEY=c3VsdWh1LWRldi1vbmx5LXBoaS1rZXktMzJieXRlcyE=
+
+# Only needed once a provider is switched to `live` (see wrangler.jsonc `vars`).
+PAYHERO_API_USERNAME=
+PAYHERO_API_PASSWORD=
+PAYHERO_CHANNEL_ID=
+MPESA_CALLBACK_URL=
+DAILY_API_KEY=
+DAILY_DOMAIN=
+AT_USERNAME=
+AT_API_KEY=
+RESEND_API_KEY=
+GOOGLE_CLIENT_ID=

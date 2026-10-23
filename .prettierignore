@@ -4,5 +4,6 @@ dist
 .turbo
 coverage
 stitch_eldoret_therapy_connect_web_app
+apps/api-worker/src/generated
 *.md
 package-lock.json

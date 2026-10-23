@@ -1,0 +1,83 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "suluhu-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-12-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "workers_dev": true,
+  "routes": [{ "pattern": "api.suluhutherapy.com", "custom_domain": true }],
+
+  // Pooled Postgres connection to Neon, reached through Hyperdrive so the
+  // Worker never holds a raw TCP pool itself. Create with:
+  //   wrangler hyperdrive create suluhu-api-db --connection-string="<Neon pooled URL>"
+  // then replace the placeholder id below (see apps/api-worker/README.md).
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "REPLACE_WITH_HYPERDRIVE_CONFIG_ID",
+      // Used only by `wrangler dev` / `vitest` (Miniflare) — never by a real
+      // deployment, which always goes through the `id` above. Same throwaway
+      // dev credentials as docker-compose.yml / .env.example.
+      "localConnectionString": "postgresql://suluhu:suluhu_dev_password@localhost:5432/suluhu_test?schema=public"
+    }
+  ],
+
+  // Therapist credential documents (replaces LocalDocumentStorageService).
+  // Wired in Phase 3; declared now so the binding exists from day one.
+  "r2_buckets": [
+    {
+      "binding": "DOCUMENTS",
+      "bucket_name": "suluhu-documents"
+    }
+  ],
+
+  // Reminder delivery (replaces BullMQ/Redis in modules/notifications). The
+  // producer and consumer both live in this Worker. Wired in Phase 5.
+  "queues": {
+    "producers": [{ "binding": "REMINDERS_QUEUE", "queue": "suluhu-reminders" }],
+    "consumers": [{ "queue": "suluhu-reminders", "max_batch_size": 10, "max_retries": 3 }]
+  },
+
+  // Scheduled reminder sweeps (replaces the node-cron-style interval in
+  // reminders.service.ts). Every 5 minutes; the consumer enforces idempotency
+  // per reminder so a missed/late tick never double-sends. Wired in Phase 5.
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+
+  // Workers Rate Limiting binding. One binding, `limit`/`period` chosen per
+  // call site in code — mirrors today's two throttler tiers (10/min strict
+  // auth; 100/min for /auth/me + /auth/refresh). Wired in Phase 2.
+  "unsafe": {
+    "bindings": [
+      {
+        "name": "RATE_LIMITER_STRICT",
+        "type": "ratelimit",
+        "namespace_id": "1001",
+        "simple": { "limit": 10, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_STANDARD",
+        "type": "ratelimit",
+        "namespace_id": "1002",
+        "simple": { "limit": 100, "period": 60 }
+      }
+    ]
+  },
+
+  // Non-secret config. Secrets (JWT, PHI key, provider credentials, Resend
+  // API key, Google client id, ...) are set with `wrangler secret put` — see
+  // apps/api-worker/README.md for the full list.
+  "vars": {
+    "API_PUBLIC_URL": "https://api.suluhutherapy.com",
+    "CORS_ORIGINS": "https://suluhutherapy.com,https://www.suluhutherapy.com,https://suluhutherapy.co.ke,http://localhost:3000",
+    "PROVIDER_MODE": "mock",
+    "MPESA_MODE": "mock",
+    "VIDEO_MODE": "mock",
+    "AI_MODE": "mock",
+    "SMS_MODE": "mock",
+    "EMAIL_MODE": "mock",
+    "BEFRIENDERS_KENYA_HOTLINE": "0800723253"
+  }
+}

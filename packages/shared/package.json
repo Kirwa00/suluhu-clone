@@ -5,10 +5,12 @@
   "description": "Framework-agnostic domain contracts shared between the API and web app.",
   "type": "commonjs",
   "main": "./dist/index.js",
+  "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.js",
       "default": "./dist/index.js"
     }
   },
@@ -16,7 +18,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.esm.json",
     "dev": "tsc -p tsconfig.build.json --watch",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "lint": "eslint \"src/**/*.ts\"",

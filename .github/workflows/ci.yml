@@ -53,7 +53,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # apps/api-worker's wrangler (v4) requires Node >=22; this already
+          # matches .nvmrc (bumped for the apps/web Cloudflare deploy).
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -61,6 +63,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run db:generate
+
+      - name: Generate Workers Prisma client (apps/api-worker)
+        run: npm run -w @suluhu/api-worker db:generate
 
       - name: Format check
         run: npm run format:check
@@ -74,8 +79,27 @@ jobs:
       - name: Run migrations
         run: npm run db:migrate
 
+      # apps/api-worker's Vitest suite runs via the root `npm run test` below
+      # (Turborepo picks it up like any other workspace). It needs secrets
+      # the same way `wrangler dev` does locally: a `.dev.vars` file, not
+      # plain env vars. Same throwaway CI secrets as the NestJS API above,
+      # and the same Postgres service (api-worker's Hyperdrive
+      # `localConnectionString` in wrangler.jsonc already points at
+      # localhost:5432/suluhu_test with these exact credentials).
+      - name: Write apps/api-worker test secrets
+        run: |
+          cat > apps/api-worker/.dev.vars <<'EOF'
+          JWT_ACCESS_SECRET=ci-access-secret-ci-access-secret-32
+          JWT_REFRESH_SECRET=ci-refresh-secret-ci-refresh-secret-32
+          PHI_ENCRYPTION_KEY=Y2ktdGVzdC1waGkta2V5LTMyLWJ5dGVzLWxvbmchISE=
+          EOF
+
       - name: Unit & integration tests
         run: npm run test
+
+      - name: wrangler deploy --dry-run (apps/api-worker)
+        working-directory: apps/api-worker
+        run: npx wrangler deploy --dry-run
 
       - name: Build
         run: npm run build
