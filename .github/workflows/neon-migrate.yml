@@ -1,0 +1,49 @@
+name: Neon migrate (manual)
+
+# Applies apps/api's Prisma migrations (`prisma migrate deploy`) to the Neon
+# project linked by the Neon GitHub integration (secret NEON_API_KEY, variable
+# NEON_PROJECT_ID). Never seeds. The connection string is fetched at runtime
+# and masked — it is never printed or stored.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Neon branch to migrate
+        default: main
+        required: true
+
+concurrency:
+  group: neon-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Show Neon project and region
+        run: |
+          if [ -z "$NEON_API_KEY" ] || [ -z "$NEON_PROJECT_ID" ]; then
+            echo "NEON_API_KEY secret or NEON_PROJECT_ID variable is missing"
+            exit 1
+          fi
+          npx -y neonctl@8 projects get "$NEON_PROJECT_ID" --output json \
+            | jq '{id: .id, name: .name, region_id: .region_id, pg_version: .pg_version}'
+
+      - name: Apply migrations (no seed)
+        run: |
+          url=$(npx -y neonctl@8 connection-string "${{ inputs.branch }}" --project-id "$NEON_PROJECT_ID")
+          echo "::add-mask::$url"
+          DATABASE_URL="$url" DIRECT_URL="$url" npm run -w @suluhu/api db:migrate
