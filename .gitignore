@@ -40,6 +40,7 @@ test-results/
 
 # Prisma
 apps/api/prisma/*.db
+apps/api-worker/src/generated/
 
 # OS / editor
 .DS_Store
