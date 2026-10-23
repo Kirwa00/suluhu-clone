@@ -4,14 +4,14 @@ import { AppException } from './app-exception';
 import { MockMpesaProvider, type MpesaProvider } from './mpesa-provider';
 import type { NotificationsService } from './notifications';
 import { parsePayHeroCallback } from './payhero-provider';
-import type { RemindersStub } from './reminders-stub';
+import type { RemindersService } from './reminders-service';
 
 /** Port of apps/api's PaymentsService. */
 export class PaymentsService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly notifications: NotificationsService,
-    private readonly reminders: RemindersStub,
+    private readonly reminders: RemindersService,
     private readonly mpesa: MpesaProvider,
   ) {}
 

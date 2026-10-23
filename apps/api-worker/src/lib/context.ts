@@ -2,17 +2,25 @@ import { createPrismaClient } from '../db/prisma';
 import type { Bindings, Env } from '../env';
 import { AdminAlertsService } from './admin-alerts-service';
 import { AdminTherapistsService } from './admin-therapists-service';
+import { MockAiSoapProvider, type AiSoapProvider } from './ai-soap-provider';
 import { MockAiSummaryProvider, type AiSummaryProvider } from './ai-summary';
+import { AnalyticsService } from './analytics-service';
 import { AppointmentsService } from './appointments-service';
 import { AuditService } from './audit';
 import { AuthService } from './auth-service';
+import { ClinicalAccessService } from './clinical-access-service';
+import { ClinicalNotesService } from './clinical-notes-service';
+import { ContentService } from './content-service';
 import { base64ToBytes } from './crypto';
 import { MockCpbVerificationProvider, type CpbVerificationProvider } from './cpb-verification';
 import { DailyVideoProvider } from './daily-provider';
 import { DiscoveryService } from './discovery-service';
 import { R2DocumentStorageService } from './document-storage';
 import { GoogleIdentityService } from './google-identity';
+import { HealthRecordService } from './health-record-service';
 import { IntakeService } from './intake-service';
+import { MessagingService } from './messaging-service';
+import { MoodService } from './mood-service';
 import { MockMpesaProvider, type MpesaProvider } from './mpesa-provider';
 import { createNotificationsService, type NotificationsService } from './notifications';
 import { OtpService } from './otp';
@@ -20,12 +28,13 @@ import { PasswordService } from './password';
 import { PayHeroProvider } from './payhero-provider';
 import { PaymentsService } from './payments-service';
 import { PhiCryptoService } from './phi-crypto';
-import { RemindersStub } from './reminders-stub';
+import { RemindersService } from './reminders-service';
 import { SessionsService } from './sessions-service';
 import { SlotsService } from './slots-service';
 import { TherapistDocumentsService } from './therapist-documents-service';
 import { TherapistsService } from './therapists-service';
 import { TokenService } from './token';
+import { TreatmentPlansService } from './treatment-plans-service';
 import { UsersService } from './users-service';
 import type { VideoProvider } from './video-provider';
 import { MockVideoProvider } from './video-provider';
@@ -55,6 +64,16 @@ export interface AuthContext {
   appointments: AppointmentsService;
   video: VideoProvider;
   sessions: SessionsService;
+  reminders: RemindersService;
+  messaging: MessagingService;
+  mood: MoodService;
+  content: ContentService;
+  clinicalAccess: ClinicalAccessService;
+  aiSoap: AiSoapProvider;
+  clinicalNotes: ClinicalNotesService;
+  treatmentPlans: TreatmentPlansService;
+  healthRecord: HealthRecordService;
+  analytics: AnalyticsService;
 }
 
 /**
@@ -118,7 +137,7 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
         })
       : new MockVideoProvider();
 
-  const reminders = new RemindersStub();
+  const reminders = new RemindersService(prisma);
   const slots = new SlotsService(prisma);
   const payments = new PaymentsService(prisma, notifications, reminders, mpesa);
   // Port of apps/api's PaymentsService.onModuleInit(): wires the mock
@@ -128,6 +147,17 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
   if (mpesa instanceof MockMpesaProvider) {
     mpesa.registerConfirmHandler((r) => payments.completeByCheckout(r));
   }
+
+  // No live AI SOAP-draft adapter exists yet on either backend — port of
+  // apps/api's ClinicalModule provider factory, including its warning. SOAP
+  // notes are written directly by the therapist; this is an optional assist.
+  if (validated.AI_MODE === 'live') {
+    console.warn(
+      'AI_MODE=live requested but no live AI SOAP-draft adapter is configured; using the mock draft assist.',
+    );
+  }
+  const aiSoap: AiSoapProvider = new MockAiSoapProvider();
+  const clinicalAccess = new ClinicalAccessService(prisma);
 
   return {
     prisma,
@@ -160,5 +190,15 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
     appointments: new AppointmentsService(prisma, slots, payments, audit, notifications, reminders),
     video,
     sessions: new SessionsService(prisma, audit, video),
+    reminders,
+    messaging: new MessagingService(prisma, phi, audit),
+    mood: new MoodService(prisma, phi),
+    content: new ContentService(prisma),
+    clinicalAccess,
+    aiSoap,
+    clinicalNotes: new ClinicalNotesService(prisma, phi, clinicalAccess, audit, aiSoap),
+    treatmentPlans: new TreatmentPlansService(prisma, phi, clinicalAccess, audit),
+    healthRecord: new HealthRecordService(prisma, clinicalAccess, audit),
+    analytics: new AnalyticsService(prisma, audit),
   };
 }

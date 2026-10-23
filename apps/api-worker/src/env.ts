@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ReminderJobMessage } from './lib/reminders-service';
 
 /**
  * Cloudflare bindings declared in wrangler.jsonc, plus the string-valued vars
@@ -13,7 +14,7 @@ export interface Bindings {
   // --- Bindings (wrangler.jsonc) --------------------------------------
   HYPERDRIVE: Hyperdrive;
   DOCUMENTS: R2Bucket;
-  REMINDERS_QUEUE: Queue;
+  REMINDERS_QUEUE: Queue<ReminderJobMessage>;
   // One Rate Limiting binding per route — see the comment above these in
   // wrangler.jsonc for why (Nest's default tracker keys per-route, not just
   // per limit value).
@@ -63,6 +64,32 @@ export interface Bindings {
   RATE_LIMITER_PAYMENTS_MPESA_CALLBACK: RateLimit;
   RATE_LIMITER_PAYMENTS_PAYHERO_CALLBACK: RateLimit;
   RATE_LIMITER_PAYMENTS_STATUS: RateLimit;
+  RATE_LIMITER_CONVERSATIONS_LIST: RateLimit;
+  RATE_LIMITER_CONVERSATIONS_OPEN: RateLimit;
+  RATE_LIMITER_CONVERSATIONS_MESSAGES_GET: RateLimit;
+  RATE_LIMITER_CONVERSATIONS_MESSAGES_SEND: RateLimit;
+  RATE_LIMITER_MOOD_CREATE: RateLimit;
+  RATE_LIMITER_MOOD_LIST: RateLimit;
+  RATE_LIMITER_CONTENT_LIST: RateLimit;
+  RATE_LIMITER_CONTENT_DETAIL: RateLimit;
+  RATE_LIMITER_ADMIN_CONTENT_LIST: RateLimit;
+  RATE_LIMITER_ADMIN_CONTENT_CREATE: RateLimit;
+  RATE_LIMITER_ADMIN_CONTENT_UPDATE: RateLimit;
+  RATE_LIMITER_CLINICAL_NOTES_UPSERT: RateLimit;
+  RATE_LIMITER_CLINICAL_NOTES_AI_DRAFT: RateLimit;
+  RATE_LIMITER_CLINICAL_NOTES_BY_APPOINTMENT: RateLimit;
+  RATE_LIMITER_TREATMENT_PLANS_UPSERT: RateLimit;
+  RATE_LIMITER_PATIENTS_NOTES: RateLimit;
+  RATE_LIMITER_PATIENTS_TREATMENT_PLAN: RateLimit;
+  RATE_LIMITER_PATIENTS_HEALTH_RECORD: RateLimit;
+  RATE_LIMITER_CLINICAL_CLIENTS: RateLimit;
+  RATE_LIMITER_ADMIN_REMINDERS_STATS: RateLimit;
+  RATE_LIMITER_ADMIN_METRICS: RateLimit;
+  RATE_LIMITER_ADMIN_REVENUE: RateLimit;
+  RATE_LIMITER_ADMIN_PAYOUTS_LIST: RateLimit;
+  RATE_LIMITER_ADMIN_PAYOUTS_PAY: RateLimit;
+  RATE_LIMITER_ADMIN_AUDIT_LOG: RateLimit;
+  RATE_LIMITER_THERAPIST_EARNINGS: RateLimit;
   AUTH_KV: KVNamespace;
 
   // --- Vars (wrangler.jsonc `vars`, non-secret) -----------------------
