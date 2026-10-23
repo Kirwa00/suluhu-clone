@@ -159,6 +159,107 @@
         "type": "ratelimit",
         "namespace_id": "1016",
         "simple": { "limit": 100, "period": 60 }
+      },
+      // Phase 3 — therapists, discovery, admin. None of these controllers
+      // carry an explicit `@Throttle(...)` in apps/api, so they all fall
+      // back to the same global default (100/min) as RATE_LIMITER_AUTH_REFRESH
+      // above — still one binding per route, for the same per-route-tracker
+      // reason explained above.
+      {
+        "name": "RATE_LIMITER_THERAPISTS_CREDENTIALS",
+        "type": "ratelimit",
+        "namespace_id": "1017",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_THERAPISTS_ONBOARDING",
+        "type": "ratelimit",
+        "namespace_id": "1018",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_THERAPISTS_AVAILABILITY_GET",
+        "type": "ratelimit",
+        "namespace_id": "1019",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_THERAPISTS_AVAILABILITY_PUT",
+        "type": "ratelimit",
+        "namespace_id": "1020",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_THERAPISTS_DOCUMENTS_UPLOAD",
+        "type": "ratelimit",
+        "namespace_id": "1021",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_THERAPISTS_DOCUMENTS_LIST",
+        "type": "ratelimit",
+        "namespace_id": "1022",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_THERAPISTS_SEARCH",
+        "type": "ratelimit",
+        "namespace_id": "1023",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_THERAPISTS_DETAIL",
+        "type": "ratelimit",
+        "namespace_id": "1024",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_THERAPISTS_DOCUMENT_DOWNLOAD",
+        "type": "ratelimit",
+        "namespace_id": "1025",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_THERAPISTS_LIST",
+        "type": "ratelimit",
+        "namespace_id": "1026",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_THERAPISTS_DETAIL",
+        "type": "ratelimit",
+        "namespace_id": "1027",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_THERAPISTS_REVIEW",
+        "type": "ratelimit",
+        "namespace_id": "1028",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_ALERTS_LIST",
+        "type": "ratelimit",
+        "namespace_id": "1029",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_ALERTS_COUNT",
+        "type": "ratelimit",
+        "namespace_id": "1030",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_ALERTS_ACKNOWLEDGE",
+        "type": "ratelimit",
+        "namespace_id": "1031",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_ALERTS_RESOLVE",
+        "type": "ratelimit",
+        "namespace_id": "1032",
+        "simple": { "limit": 100, "period": 60 }
       }
     ]
   },

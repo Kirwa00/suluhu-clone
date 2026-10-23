@@ -1,13 +1,20 @@
 import { createPrismaClient } from '../db/prisma';
 import type { Bindings, Env } from '../env';
+import { AdminAlertsService } from './admin-alerts-service';
+import { AdminTherapistsService } from './admin-therapists-service';
 import { AuditService } from './audit';
 import { AuthService } from './auth-service';
 import { base64ToBytes } from './crypto';
+import { MockCpbVerificationProvider, type CpbVerificationProvider } from './cpb-verification';
+import { DiscoveryService } from './discovery-service';
+import { R2DocumentStorageService } from './document-storage';
 import { GoogleIdentityService } from './google-identity';
 import { createNotificationsService, type NotificationsService } from './notifications';
 import { OtpService } from './otp';
 import { PasswordService } from './password';
 import { PhiCryptoService } from './phi-crypto';
+import { TherapistDocumentsService } from './therapist-documents-service';
+import { TherapistsService } from './therapists-service';
 import { TokenService } from './token';
 import { UsersService } from './users-service';
 
@@ -22,6 +29,13 @@ export interface AuthContext {
   notifications: NotificationsService;
   auth: AuthService;
   users: UsersService;
+  cpb: CpbVerificationProvider;
+  documents: R2DocumentStorageService;
+  therapists: TherapistsService;
+  therapistDocuments: TherapistDocumentsService;
+  discovery: DiscoveryService;
+  adminTherapists: AdminTherapistsService;
+  adminAlerts: AdminAlertsService;
 }
 
 /**
@@ -42,6 +56,18 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
   const google = new GoogleIdentityService(validated.GOOGLE_CLIENT_ID);
   const audit = new AuditService(prisma);
   const phi = new PhiCryptoService(base64ToBytes(validated.PHI_ENCRYPTION_KEY));
+
+  // No live CPB-portal integration exists yet on either backend — verification
+  // is done by an admin reviewing the documents the therapist uploads. Port
+  // of apps/api's TherapistsModule provider factory, including its warning.
+  if (validated.PROVIDER_MODE === 'live') {
+    console.warn(
+      'PROVIDER_MODE=live but no live CPB-portal integration exists — using the mock CPB verification provider',
+    );
+  }
+  const cpb = new MockCpbVerificationProvider();
+  const documents = new R2DocumentStorageService(env.DOCUMENTS);
+
   return {
     prisma,
     passwords,
@@ -53,5 +79,12 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
     notifications,
     auth: new AuthService(prisma, passwords, tokens, otp, audit, google),
     users: new UsersService(prisma, phi),
+    cpb,
+    documents,
+    therapists: new TherapistsService(prisma, audit, cpb),
+    therapistDocuments: new TherapistDocumentsService(prisma, documents, audit),
+    discovery: new DiscoveryService(prisma),
+    adminTherapists: new AdminTherapistsService(prisma, audit, notifications, cpb),
+    adminAlerts: new AdminAlertsService(prisma, audit),
   };
 }
