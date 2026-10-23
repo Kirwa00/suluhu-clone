@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# RETIRED — kept for reference only (legacy VPS stack, never went live).
+# Production Postgres is Neon, which has its own backups/point-in-time restore.
+#
 # Nightly Postgres dump for the single-host stack. Dumps are gzipped, kept for
 # RETENTION_DAYS, and should be copied off the server (object storage) — a dump
 # sitting on the same disk as the database is not a backup.

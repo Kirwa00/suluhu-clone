@@ -2,7 +2,8 @@
 
 **Target:** the `suluhu-web` Worker serves the web app on
 `suluhutherapy.com` and `www.suluhutherapy.com` (that zone's DNS is on
-Cloudflare). The API stays on the VPS at `api.suluhutherapy.co.ke`.
+Cloudflare). The API is the `suluhu-api` Worker (`apps/api-worker`) at
+`api.suluhutherapy.com`.
 
 ### One-time setup checklist
 
@@ -102,7 +103,7 @@ later, `@opennextjs/cloudflare` can be bumped to latest at the same time.
 
 2. **Review `wrangler.jsonc`.** The Worker is named `suluhu-web`; rename it if
    you want a different name/subdomain. `NEXT_PUBLIC_API_URL` is set to
-   `https://api.suluhutherapy.co.ke` — change it if you want to point a
+   `https://api.suluhutherapy.com` — change it if you want to point a
    preview deploy at a different API.
 
 3. **Build and deploy:**

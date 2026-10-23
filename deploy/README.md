@@ -1,9 +1,17 @@
-# Deploying Suluhu on a single Docker host
+# Legacy: self-hosting Suluhu on a single Docker host
 
-Target layout: one server (e.g. Hetzner CPX31, or an equivalent self-managed
-VPS — 4 vCPU / 8 GB) running the whole stack under Docker Compose, with
-Cloudflare fronting DNS for `suluhutherapy.co.ke`, the canonical domain.
-`suluhutherapy.com` is a secondary domain that 301-redirects to it.
+> **Production does not run here.** The production API is `apps/api-worker`
+> on Cloudflare Workers (Neon Postgres via Hyperdrive, R2, KV, Queues) at
+> `api.suluhutherapy.com`, and the web app is `apps/web` on Cloudflare
+> Workers — see `deploy/CUTOVER.md` (launch runbook) and
+> `apps/api-worker/README.md`. The VPS stack below never went live and is kept
+> only as reference for self-hosters. Its SSH deploy workflow
+> (`.github/workflows/deploy.yml`) has been removed; don't add
+> `VPS_HOST`/`VPS_USER`/`VPS_SSH_KEY` repo secrets.
+
+Reference layout: one server (4 vCPU / 8 GB) running the whole stack under
+Docker Compose (`docker-compose.prod.yml`, `deploy/Caddyfile`,
+`deploy/backup-db.sh`), with Cloudflare fronting DNS.
 
 ```
 Cloudflare (proxied)
@@ -149,14 +157,8 @@ the API. `MPESA_MODE=live` additionally needs the PayHero callback
 with PayHero, and `SMS_MODE=live` gates therapist/admin OTP login — until it is
 live, those OTPs only appear in the API logs.
 
-## 8. Moving the API off this host (Cloudflare Workers cutover)
+## 8. Production is on Cloudflare, not this host
 
-This stack describes where `apps/api` (NestJS) runs *today*. `apps/api-worker`
-is a from-scratch port of the same API to Cloudflare Workers, kept in sync
-across five prior phases and ready to take over — see
-`apps/api-worker/README.md` for what it covers. **Cutting production traffic
-over to it is a separate, deliberate step**, not something that happens by
-deploying `apps/api-worker` on its own: see `deploy/CUTOVER.md` for the full
-runbook (data migration to Neon, documents to R2, the maintenance window,
-verification checklist, and rollback plan). Don't run that runbook casually —
-it moves real patient data between databases.
+`apps/api-worker` on Cloudflare Workers is the production API; nothing was
+ever migrated from a VPS because the VPS never served real traffic. See
+`deploy/CUTOVER.md` for the fresh-launch runbook.

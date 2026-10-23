@@ -25,7 +25,7 @@
   "preview_urls": true,
   "observability": { "enabled": true },
   "vars": {
-    "NEXT_PUBLIC_API_URL": "https://api.suluhutherapy.co.ke"
+    "NEXT_PUBLIC_API_URL": "https://api.suluhutherapy.com"
   }
 
   // Optional, not enabled by default — see apps/web/CLOUDFLARE.md "Optional extras":

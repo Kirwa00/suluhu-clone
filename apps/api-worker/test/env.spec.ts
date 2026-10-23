@@ -11,7 +11,7 @@ describe('validateEnv', () => {
   it('accepts a minimal valid config and fills in defaults', () => {
     const env = validateEnv(base);
     expect(env.PROVIDER_MODE).toBe('mock');
-    expect(env.API_PUBLIC_URL).toBe('https://api.suluhutherapy.co.ke');
+    expect(env.API_PUBLIC_URL).toBe('https://api.suluhutherapy.com');
     expect(env.JWT_ACCESS_TTL).toBe('15m');
   });
 
