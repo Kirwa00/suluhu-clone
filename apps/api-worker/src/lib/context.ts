@@ -2,21 +2,33 @@ import { createPrismaClient } from '../db/prisma';
 import type { Bindings, Env } from '../env';
 import { AdminAlertsService } from './admin-alerts-service';
 import { AdminTherapistsService } from './admin-therapists-service';
+import { MockAiSummaryProvider, type AiSummaryProvider } from './ai-summary';
+import { AppointmentsService } from './appointments-service';
 import { AuditService } from './audit';
 import { AuthService } from './auth-service';
 import { base64ToBytes } from './crypto';
 import { MockCpbVerificationProvider, type CpbVerificationProvider } from './cpb-verification';
+import { DailyVideoProvider } from './daily-provider';
 import { DiscoveryService } from './discovery-service';
 import { R2DocumentStorageService } from './document-storage';
 import { GoogleIdentityService } from './google-identity';
+import { IntakeService } from './intake-service';
+import { MockMpesaProvider, type MpesaProvider } from './mpesa-provider';
 import { createNotificationsService, type NotificationsService } from './notifications';
 import { OtpService } from './otp';
 import { PasswordService } from './password';
+import { PayHeroProvider } from './payhero-provider';
+import { PaymentsService } from './payments-service';
 import { PhiCryptoService } from './phi-crypto';
+import { RemindersStub } from './reminders-stub';
+import { SessionsService } from './sessions-service';
+import { SlotsService } from './slots-service';
 import { TherapistDocumentsService } from './therapist-documents-service';
 import { TherapistsService } from './therapists-service';
 import { TokenService } from './token';
 import { UsersService } from './users-service';
+import type { VideoProvider } from './video-provider';
+import { MockVideoProvider } from './video-provider';
 
 export interface AuthContext {
   prisma: Awaited<ReturnType<typeof createPrismaClient>>;
@@ -36,6 +48,13 @@ export interface AuthContext {
   discovery: DiscoveryService;
   adminTherapists: AdminTherapistsService;
   adminAlerts: AdminAlertsService;
+  ai: AiSummaryProvider;
+  intake: IntakeService;
+  slots: SlotsService;
+  payments: PaymentsService;
+  appointments: AppointmentsService;
+  video: VideoProvider;
+  sessions: SessionsService;
 }
 
 /**
@@ -68,6 +87,48 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
   const cpb = new MockCpbVerificationProvider();
   const documents = new R2DocumentStorageService(env.DOCUMENTS);
 
+  // No live OpenAI adapter exists yet on either backend — port of
+  // apps/api's IntakeModule provider factory, including its warning.
+  if (validated.AI_MODE === 'live') {
+    console.warn(
+      'AI_MODE=live requested but no live AI intake-summary adapter is configured; using the mock summary.',
+    );
+  }
+  const ai: AiSummaryProvider = new MockAiSummaryProvider();
+
+  // `validateEnv` already rejects MPESA_MODE=live without these set, so the
+  // non-null assertions below only run once they're guaranteed present.
+  const mpesa: MpesaProvider =
+    validated.MPESA_MODE === 'live'
+      ? new PayHeroProvider({
+          apiUsername: validated.PAYHERO_API_USERNAME!,
+          apiPassword: validated.PAYHERO_API_PASSWORD!,
+          channelId: validated.PAYHERO_CHANNEL_ID!,
+          callbackUrl: validated.MPESA_CALLBACK_URL!,
+          baseUrl: validated.PAYHERO_BASE_URL,
+        })
+      : new MockMpesaProvider();
+
+  const video: VideoProvider =
+    validated.VIDEO_MODE === 'live'
+      ? new DailyVideoProvider({
+          apiKey: validated.DAILY_API_KEY!,
+          domain: validated.DAILY_DOMAIN!,
+          baseUrl: validated.DAILY_BASE_URL,
+        })
+      : new MockVideoProvider();
+
+  const reminders = new RemindersStub();
+  const slots = new SlotsService(prisma);
+  const payments = new PaymentsService(prisma, notifications, reminders, mpesa);
+  // Port of apps/api's PaymentsService.onModuleInit(): wires the mock
+  // provider's simulated callback back into completion. A fresh pairing is
+  // built per request here instead of once at app boot, since there's no
+  // Worker equivalent of a singleton module lifecycle.
+  if (mpesa instanceof MockMpesaProvider) {
+    mpesa.registerConfirmHandler((r) => payments.completeByCheckout(r));
+  }
+
   return {
     prisma,
     passwords,
@@ -86,5 +147,18 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
     discovery: new DiscoveryService(prisma),
     adminTherapists: new AdminTherapistsService(prisma, audit, notifications, cpb),
     adminAlerts: new AdminAlertsService(prisma, audit),
+    ai,
+    intake: new IntakeService(
+      prisma,
+      audit,
+      notifications,
+      validated.BEFRIENDERS_KENYA_HOTLINE,
+      ai,
+    ),
+    slots,
+    payments,
+    appointments: new AppointmentsService(prisma, slots, payments, audit, notifications, reminders),
+    video,
+    sessions: new SessionsService(prisma, audit, video),
   };
 }

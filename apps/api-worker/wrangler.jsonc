@@ -260,6 +260,93 @@
         "type": "ratelimit",
         "namespace_id": "1032",
         "simple": { "limit": 100, "period": 60 }
+      },
+      // Phase 4 — intake, appointments/slots, sessions, payments. None of
+      // these controllers carry an explicit `@Throttle(...)` in apps/api
+      // either, so they all fall back to the same global default (100/min).
+      {
+        "name": "RATE_LIMITER_INTAKE_SUBMIT",
+        "type": "ratelimit",
+        "namespace_id": "1033",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_INTAKE_LATEST",
+        "type": "ratelimit",
+        "namespace_id": "1034",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_INTAKE_HISTORY",
+        "type": "ratelimit",
+        "namespace_id": "1035",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_THERAPISTS_SLOTS",
+        "type": "ratelimit",
+        "namespace_id": "1036",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_APPOINTMENTS_CREATE",
+        "type": "ratelimit",
+        "namespace_id": "1037",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_APPOINTMENTS_LIST",
+        "type": "ratelimit",
+        "namespace_id": "1038",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_APPOINTMENTS_DETAIL",
+        "type": "ratelimit",
+        "namespace_id": "1039",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_APPOINTMENTS_CANCEL",
+        "type": "ratelimit",
+        "namespace_id": "1040",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_SESSIONS_ACCESS",
+        "type": "ratelimit",
+        "namespace_id": "1041",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_SESSIONS_START",
+        "type": "ratelimit",
+        "namespace_id": "1042",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_SESSIONS_END",
+        "type": "ratelimit",
+        "namespace_id": "1043",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_PAYMENTS_MPESA_CALLBACK",
+        "type": "ratelimit",
+        "namespace_id": "1044",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_PAYMENTS_PAYHERO_CALLBACK",
+        "type": "ratelimit",
+        "namespace_id": "1045",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_PAYMENTS_STATUS",
+        "type": "ratelimit",
+        "namespace_id": "1046",
+        "simple": { "limit": 100, "period": 60 }
       }
     ]
   },

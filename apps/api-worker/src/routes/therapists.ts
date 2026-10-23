@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import {
   UserRole,
   setAvailabilitySchema,
+  slotQuerySchema,
   submitCredentialsSchema,
   therapistSearchSchema,
   uploadDocumentSchema,
@@ -166,3 +167,18 @@ therapists.get('/:id', rateLimit('RATE_LIMITER_THERAPISTS_DETAIL'), requireAuth(
   const result = await must(c.get('ctx')).discovery.getPublicProfile(id);
   return c.json(successEnvelope(result, c.get('requestId')));
 });
+
+// --- Booking slots (any authenticated role) -------------------------------
+// Port of SlotsController (`therapists/:id/slots`, also no @Roles).
+
+therapists.get(
+  '/:id/slots',
+  rateLimit('RATE_LIMITER_THERAPISTS_SLOTS'),
+  requireAuth(),
+  async (c) => {
+    const id = uuidSchema.parse(c.req.param('id'));
+    const query = slotQuerySchema.parse(c.req.query());
+    const result = await must(c.get('ctx')).slots.getSlots(id, query);
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);

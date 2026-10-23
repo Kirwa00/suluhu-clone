@@ -33,6 +33,23 @@ export function randomTokenBase64Url(length: number): string {
   return bytesToBase64Url(bytes);
 }
 
+/** `length` cryptographically random bytes, lower-case hex-encoded. */
+export function randomHex(length: number): string {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return bytesToHex(bytes);
+}
+
+/** Base64-encodes a UTF-8 string (e.g. for a Basic auth header). */
+export function utf8ToBase64(input: string): string {
+  return bytesToBase64(new TextEncoder().encode(input));
+}
+
+/** Base64url-encodes a UTF-8 string (e.g. for a mock JWT-shaped payload). */
+export function utf8ToBase64Url(input: string): string {
+  return bytesToBase64Url(new TextEncoder().encode(input));
+}
+
 /** A `length`-digit numeric code (e.g. an OTP), each digit uniformly random. */
 export function randomDigits(length: number): string {
   const bytes = new Uint8Array(length);

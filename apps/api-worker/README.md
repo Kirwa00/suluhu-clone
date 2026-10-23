@@ -6,16 +6,22 @@ adapters) + Cloudflare bindings instead of Express + raw Postgres/Redis
 connections. See the root `CLAUDE.md` / `Suluhu_Therapy_Center_SDLC_Documentation.md`
 for product context.
 
-**Status: Phases 1–3 (Foundation, Auth & users, Therapists & admin).**
-`apps/api` is still the real backend — `apps/web`'s `NEXT_PUBLIC_API_URL`
-has not changed. This Worker exposes `/api/v1/health(/live|/ready)`, the
-full auth/users surface (register, login, email MFA, Google sign-in,
-refresh rotation, logout, OTP request/verify, password forgot/reset/change,
-`/auth/me`, `/users/me`), therapist self-service onboarding (credentials,
-availability, document upload via R2), public therapist discovery, and
-admin onboarding approval + clinical alerts. Payments, sessions, clinical
-notes, etc. land in later phases (see the delivery plan in the PR/issue this
-shipped from).
+**Status: Phases 1–4 (Foundation, Auth & users, Therapists & admin, Care
+flow).** `apps/api` is still the real backend — `apps/web`'s
+`NEXT_PUBLIC_API_URL` has not changed. This Worker exposes
+`/api/v1/health(/live|/ready)`, the full auth/users surface (register,
+login, email MFA, Google sign-in, refresh rotation, logout, OTP
+request/verify, password forgot/reset/change, `/auth/me`, `/users/me`),
+therapist self-service onboarding (credentials, availability, document
+upload via R2), public therapist discovery, admin onboarding approval +
+clinical alerts, PHQ-9/GAD-7/CAGE intake & triage, booking slots &
+appointments, the Daily.co video-session lifecycle, and M-Pesa payments
+(via PayHero, with Daraja-direct and PayHero callback webhooks). Clinical
+notes, messaging, notifications/reminders, mood, content, analytics, and
+audit land in Phase 5 (see the delivery plan in the PR/issue this shipped
+from) — and so does automated therapist payouts, which doesn't exist as a
+service in apps/api yet either (only a bare `Payout` Prisma model, read
+only by apps/api's analytics module).
 
 ## Why a second Prisma major version
 
@@ -200,6 +206,69 @@ description for the full transcript.
   default (100/min) as `RATE_LIMITER_AUTH_REFRESH` — still one binding
   *per route*, for the same per-route-tracker reason as Phase 2.
 
+## Care flow (Phase 4) — what to know
+
+- **Scope note — no payouts to port**: the delivery plan lists "payouts"
+  under this phase, but apps/api has no payout service or controller to
+  port — `Payout` is a bare Prisma model, written nowhere and read only by
+  apps/api's (not-yet-ported, Phase 5) analytics module for reporting.
+  There's nothing to port here; this is a deliberate scope reduction, not
+  an oversight.
+- **Reminders are a documented no-op stub**: `AppointmentsService` and
+  `PaymentsService` both call apps/api's `RemindersService` on
+  booking/payment-confirmation/cancellation to schedule or cancel SMS/email
+  reminders. That service is BullMQ-backed and squarely Phase 5 scope
+  (Cloudflare Queues + Cron, same as `src/index.ts`'s already-declared
+  `queue()`/`scheduled()` placeholders). `src/lib/reminders-stub.ts` is a
+  trivial stand-in with the same two methods, intentionally doing nothing —
+  no reminder is silently dropped that Phase 5 was ever going to send, and
+  this file is replaced wholesale once Phase 5 wires the real thing.
+- **Mock M-Pesa confirms synchronously, not after a simulated delay**:
+  apps/api's `MockMpesaProvider.initiateStkPush` uses `setTimeout(..., 2000)`
+  to simulate the customer approving the STK prompt ~2s later, relying on
+  that delay to land *after* `PaymentsService.initiateMpesa` has persisted
+  the checkout id Daraja/PayHero would have returned. A Worker's execution
+  context isn't guaranteed to run a bare `setTimeout` past the response, so
+  `src/lib/mpesa-provider.ts`'s mock splits the step instead:
+  `initiateStkPush` only returns the push result, and a separate
+  `simulateCallback(checkoutRequestId)` — called by `PaymentsService`
+  immediately after it persists that id — does the confirming. Same
+  ordering guarantee, no timer dependency; a booking request in mock mode
+  now returns with the payment already `SUCCEEDED` instead of `PROCESSING`.
+- **PayHero / Daraja / Daily**: `PayHeroProvider`, `DailyVideoProvider` are
+  byte-for-byte ports of apps/api's, with `node:crypto`'s `randomBytes`/
+  `Buffer` swapped for WebCrypto (`crypto.getRandomValues` via the new
+  `randomHex`/`utf8ToBase64`/`utf8ToBase64Url` helpers in `src/lib/
+  crypto.ts`) — same request/response shapes, same defensive PayHero
+  callback-field-name parsing.
+- **Callback webhooks are public but still rate-limited**: `POST /payments/
+  mpesa/callback` and `POST /payments/payhero/callback` skip `requireAuth()`
+  (same as apps/api's `@Public()`) but still go through `rateLimit(...)` —
+  apps/api's global guard order is throttle → authenticate → authorize, and
+  `@Public()` only opts out of the second step.
+- **Rate limiting**: same story as Phases 2–3 — none of these controllers
+  carry an explicit `@Throttle(...)` in apps/api, so all 14 new routes use
+  the global default (100/min), one binding per route.
+
+**Known limitation, extended**: every Phase 4 route that touches the
+database (intake submit/latest/history, booking slots, appointment create/
+list/detail/cancel, session access/start/end, both payment callbacks,
+payment status) was verified by hand via `wrangler dev` against local
+Postgres rather than by a Vitest integration test, for the same `pg`-in-
+Miniflare reason as Phases 1–3. What *is* covered in Vitest: PayHero
+callback parsing (documented PascalCase shape, flattened snake_case
+variant, status-string fallback), Kenyan phone normalization, the mock
+M-Pesa provider's initiate/confirm ordering, and the mock video provider's
+room/token shape plus `normalizeDailyDomain`. See the Phase 4 PR
+description for the full manual test transcript (therapist onboarding →
+approval → availability; patient intake, including a crisis-flagged
+submission creating a `ClinicalAlert` and notifying admins; slots → paid
+booking → mock M-Pesa confirmation → confirmation SMS/email → payment
+status; a free-session booking consuming the per-patient quota and a
+second booking correctly falling back to paid; cross-party/cross-role
+access checks on appointments and session start/end; both callback
+webhooks safely no-opping on an unknown checkout id).
+
 ## Deploying
 
 Cloudflare Workers Builds (recommended — fires on push, like the existing
@@ -305,7 +374,7 @@ Rate Limiting bindings — one **per route**, not per limit value (see
 | 10/min   | `RATE_LIMITER_AUTH_REGISTER`, `RATE_LIMITER_AUTH_LOGOUT`, `RATE_LIMITER_AUTH_PASSWORD_RESET`, `RATE_LIMITER_AUTH_PASSWORD_CHANGE`, `RATE_LIMITER_AUTH_TEST_OTP` |
 | 5/min    | `RATE_LIMITER_AUTH_LOGIN`, `RATE_LIMITER_AUTH_GOOGLE`, `RATE_LIMITER_AUTH_GOOGLE_REGISTER`, `RATE_LIMITER_AUTH_MFA_VERIFY`, `RATE_LIMITER_AUTH_OTP_VERIFY` |
 | 3/min    | `RATE_LIMITER_AUTH_OTP_REQUEST`, `RATE_LIMITER_AUTH_PASSWORD_FORGOT` |
-| 100/min  | `RATE_LIMITER_AUTH_REFRESH`, `RATE_LIMITER_AUTH_ME`, `RATE_LIMITER_USERS_ME_GET`, `RATE_LIMITER_USERS_ME_PATCH`, `RATE_LIMITER_THERAPISTS_CREDENTIALS`, `RATE_LIMITER_THERAPISTS_ONBOARDING`, `RATE_LIMITER_THERAPISTS_AVAILABILITY_GET`, `RATE_LIMITER_THERAPISTS_AVAILABILITY_PUT`, `RATE_LIMITER_THERAPISTS_DOCUMENTS_UPLOAD`, `RATE_LIMITER_THERAPISTS_DOCUMENTS_LIST`, `RATE_LIMITER_THERAPISTS_SEARCH`, `RATE_LIMITER_THERAPISTS_DETAIL`, `RATE_LIMITER_THERAPISTS_DOCUMENT_DOWNLOAD`, `RATE_LIMITER_ADMIN_THERAPISTS_LIST`, `RATE_LIMITER_ADMIN_THERAPISTS_DETAIL`, `RATE_LIMITER_ADMIN_THERAPISTS_REVIEW`, `RATE_LIMITER_ADMIN_ALERTS_LIST`, `RATE_LIMITER_ADMIN_ALERTS_COUNT`, `RATE_LIMITER_ADMIN_ALERTS_ACKNOWLEDGE`, `RATE_LIMITER_ADMIN_ALERTS_RESOLVE` |
+| 100/min  | `RATE_LIMITER_AUTH_REFRESH`, `RATE_LIMITER_AUTH_ME`, `RATE_LIMITER_USERS_ME_GET`, `RATE_LIMITER_USERS_ME_PATCH`, `RATE_LIMITER_THERAPISTS_CREDENTIALS`, `RATE_LIMITER_THERAPISTS_ONBOARDING`, `RATE_LIMITER_THERAPISTS_AVAILABILITY_GET`, `RATE_LIMITER_THERAPISTS_AVAILABILITY_PUT`, `RATE_LIMITER_THERAPISTS_DOCUMENTS_UPLOAD`, `RATE_LIMITER_THERAPISTS_DOCUMENTS_LIST`, `RATE_LIMITER_THERAPISTS_SEARCH`, `RATE_LIMITER_THERAPISTS_DETAIL`, `RATE_LIMITER_THERAPISTS_DOCUMENT_DOWNLOAD`, `RATE_LIMITER_ADMIN_THERAPISTS_LIST`, `RATE_LIMITER_ADMIN_THERAPISTS_DETAIL`, `RATE_LIMITER_ADMIN_THERAPISTS_REVIEW`, `RATE_LIMITER_ADMIN_ALERTS_LIST`, `RATE_LIMITER_ADMIN_ALERTS_COUNT`, `RATE_LIMITER_ADMIN_ALERTS_ACKNOWLEDGE`, `RATE_LIMITER_ADMIN_ALERTS_RESOLVE`, `RATE_LIMITER_INTAKE_SUBMIT`, `RATE_LIMITER_INTAKE_LATEST`, `RATE_LIMITER_INTAKE_HISTORY`, `RATE_LIMITER_THERAPISTS_SLOTS`, `RATE_LIMITER_APPOINTMENTS_CREATE`, `RATE_LIMITER_APPOINTMENTS_LIST`, `RATE_LIMITER_APPOINTMENTS_DETAIL`, `RATE_LIMITER_APPOINTMENTS_CANCEL`, `RATE_LIMITER_SESSIONS_ACCESS`, `RATE_LIMITER_SESSIONS_START`, `RATE_LIMITER_SESSIONS_END`, `RATE_LIMITER_PAYMENTS_MPESA_CALLBACK`, `RATE_LIMITER_PAYMENTS_PAYHERO_CALLBACK`, `RATE_LIMITER_PAYMENTS_STATUS` |
 
 `queue()` and `scheduled()` handlers in `src/index.ts` are no-op placeholders
 today (they ack/log and return) so the Worker is valid and deployable before
