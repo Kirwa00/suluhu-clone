@@ -12,6 +12,9 @@ import { auth } from './routes/auth';
 import { users } from './routes/users';
 import { therapists } from './routes/therapists';
 import { admin } from './routes/admin';
+import { intake } from './routes/intake';
+import { appointments } from './routes/appointments';
+import { payments } from './routes/payments';
 import type { AppEnv } from './types';
 
 const app = new Hono<AppEnv>();
@@ -56,15 +59,23 @@ api.route('/health', health);
 
 // All of these need the request-scoped service graph (Prisma, tokens,
 // otp, therapists, ...) — built once per request here, reused by every
-// route and by requireAuth()/requireRole() on the protected ones.
+// route and by requireAuth()/requireRole() on the protected ones. Payments'
+// two callback routes are public (no requireAuth), but still need `ctx` to
+// reach PaymentsService.
 api.use('/auth/*', withAuthContext());
 api.use('/users/*', withAuthContext());
 api.use('/therapists/*', withAuthContext());
 api.use('/admin/*', withAuthContext());
+api.use('/intake/*', withAuthContext());
+api.use('/appointments/*', withAuthContext());
+api.use('/payments/*', withAuthContext());
 api.route('/auth', auth);
 api.route('/users', users);
 api.route('/therapists', therapists);
 api.route('/admin', admin);
+api.route('/intake', intake);
+api.route('/appointments', appointments);
+api.route('/payments', payments);
 
 app.route('/api/v1', api);
 
