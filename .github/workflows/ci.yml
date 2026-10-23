@@ -67,6 +67,9 @@ jobs:
       - name: Generate Workers Prisma client (apps/api-worker)
         run: npm run -w @suluhu/api-worker db:generate
 
+      - name: Generate Workers runtime types (apps/api-worker)
+        run: npm run -w @suluhu/api-worker cf:typegen
+
       - name: Format check
         run: npm run format:check
 

@@ -5,15 +5,15 @@ import { z } from 'zod';
 import type { ApiResponse } from '@suluhu/shared';
 import { AppException } from '../src/lib/app-exception';
 import { onError } from '../src/lib/error-handler';
-import { requestId, type RequestIdVariables } from '../src/middleware/request-id';
-import type { Bindings } from '../src/env';
+import { requestId } from '../src/middleware/request-id';
+import type { AppEnv } from '../src/types';
 
 /**
  * Exercises the error-handling pipeline in isolation (no Prisma/pg) against
  * a throwaway app that mirrors how src/index.ts wires requestId + onError.
  */
 function buildTestApp() {
-  const app = new Hono<{ Bindings: Bindings; Variables: RequestIdVariables }>();
+  const app = new Hono<AppEnv>();
   app.use('*', requestId());
   app.onError(onError);
 

@@ -2,14 +2,15 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Bindings } from './env';
 import { validateEnv } from './env';
-import type { RequestIdVariables } from './middleware/request-id';
 import { requestId } from './middleware/request-id';
 import { accessLog } from './middleware/logging';
+import { withAuthContext } from './middleware/with-context';
 import { onError } from './lib/error-handler';
 import { errorEnvelope } from './lib/response';
 import { health } from './routes/health';
-
-type AppEnv = { Bindings: Bindings; Variables: RequestIdVariables };
+import { auth } from './routes/auth';
+import { users } from './routes/users';
+import type { AppEnv } from './types';
 
 const app = new Hono<AppEnv>();
 
@@ -36,9 +37,10 @@ app.use(
 
 // Fail fast on a misconfigured Worker — same posture as apps/api's env
 // validation refusing to boot, adapted to the per-request Workers model
-// (there's no persistent boot phase to fail during).
+// (there's no persistent boot phase to fail during). Stored on the context
+// so downstream middleware (withAuthContext) doesn't re-parse it.
 app.use('*', async (c, next) => {
-  validateEnv(c.env as unknown as Record<string, unknown>);
+  c.set('validatedEnv', validateEnv(c.env as unknown as Record<string, unknown>));
   await next();
 });
 
@@ -49,6 +51,14 @@ app.notFound((c) =>
 
 const api = new Hono<AppEnv>();
 api.route('/health', health);
+
+// Auth/users both need the request-scoped service graph (Prisma, tokens,
+// otp, ...) — built once per request here, reused by every route and by
+// requireAuth() on the protected ones.
+api.use('/auth/*', withAuthContext());
+api.use('/users/*', withAuthContext());
+api.route('/auth', auth);
+api.route('/users', users);
 
 app.route('/api/v1', api);
 

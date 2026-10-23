@@ -50,4 +50,8 @@ export class AppException extends Error {
   static serviceUnavailable(message = 'Dependencies not ready'): AppException {
     return new AppException(ErrorCode.INTERNAL, message, 503);
   }
+
+  static tooManyRequests(message = 'Too many requests. Please try again later.'): AppException {
+    return new AppException(ErrorCode.RATE_LIMITED, message, 429);
+  }
 }
