@@ -15,7 +15,7 @@
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "REPLACE_WITH_HYPERDRIVE_CONFIG_ID",
+      "id": "4e5f168a051f4e099d967fade82bd0c6",
       // Used only by `wrangler dev` / `vitest` (Miniflare) — never by a real
       // deployment, which always goes through the `id` above. Same throwaway
       // dev credentials as docker-compose.yml / .env.example.
@@ -518,7 +518,7 @@
   // (`otp-issue:<userId>:<purpose>`, best-effort — KV is eventually
   // consistent, acceptable for an anti-abuse counter, not a correctness
   // guarantee). Create with `wrangler kv namespace create suluhu-api-auth`.
-  "kv_namespaces": [{ "binding": "AUTH_KV", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }],
+  "kv_namespaces": [{ "binding": "AUTH_KV", "id": "ba164483c4bf421cbae53e1ab0d7e9dd" }],
 
   // Non-secret config. Secrets (JWT, PHI key, provider credentials, Resend
   // API key, Google client id, ...) are set with `wrangler secret put` — see
