@@ -49,7 +49,10 @@ export class R2DocumentStorageService {
     if (!object) {
       throw AppException.serviceUnavailable('Document content is missing from storage');
     }
-    return { bytes: await object.arrayBuffer(), contentType: object.httpMetadata?.contentType ?? null };
+    return {
+      bytes: await object.arrayBuffer(),
+      contentType: object.httpMetadata?.contentType ?? null,
+    };
   }
 
   async delete(key: string): Promise<void> {

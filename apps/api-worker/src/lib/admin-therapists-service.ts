@@ -1,4 +1,8 @@
-import { TherapistVerificationStatus, type Paginated, type ReviewDecisionInput } from '@suluhu/shared';
+import {
+  TherapistVerificationStatus,
+  type Paginated,
+  type ReviewDecisionInput,
+} from '@suluhu/shared';
 import type { Prisma, PrismaClient } from '../generated/prisma';
 import { AppException } from './app-exception';
 import type { AuditService } from './audit';
