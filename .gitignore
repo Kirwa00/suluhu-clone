@@ -25,6 +25,8 @@ out/
 .env.production
 !.env.example
 !.env.production.example
+# Public, build-time-only NEXT_PUBLIC_* values for the Cloudflare Workers build
+!apps/web/.env.production
 
 # Logs
 logs/

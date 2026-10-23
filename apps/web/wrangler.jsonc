@@ -14,6 +14,16 @@
   // time (see package.json "cf:build"), so this entry matters for any server-side
   // fetches that read process.env at request time; keep it in sync with the value
   // baked in at build time. Override per-environment below, or with `wrangler deploy --var`.
+  // Served on suluhutherapy.com (zone on Cloudflare). Custom domains create the
+  // DNS records and certificates on first deploy; any existing A/CNAME records
+  // for these hostnames must be deleted first (see CLOUDFLARE.md).
+  "routes": [
+    { "pattern": "suluhutherapy.com", "custom_domain": true },
+    { "pattern": "www.suluhutherapy.com", "custom_domain": true }
+  ],
+  "workers_dev": true,
+  "preview_urls": true,
+  "observability": { "enabled": true },
   "vars": {
     "NEXT_PUBLIC_API_URL": "https://api.suluhutherapy.co.ke"
   }
