@@ -17,7 +17,18 @@ psychoeducation content (public + admin-authored), SOAP clinical notes +
 treatment plans + the aggregated patient health record (all PHI-encrypted
 and ABAC-gated), and admin analytics/revenue/payouts + the audit-log
 viewer. Appointment reminders are real too, just delivered differently
-than apps/api — see "Reminders" below. Only Phase 6 (cutover) remains.
+than apps/api — see "Reminders" below. Phase 6 (cutover) has a runbook —
+`deploy/CUTOVER.md` — but hasn't been executed against production: it needs
+a populated Neon project, an R2 bucket backfilled from the VPS's live
+documents, and a maintenance window, none of which this sandboxed session
+has the credentials or VPS access to carry out (the root `CLAUDE.md`'s
+"Known issue: SSH unreachable" note blocks the runbook's data-migration
+steps the same way it's blocked everything else that needs VPS access). One
+real bug *was* fixed while preparing the runbook: `wrangler.jsonc`'s
+`routes` entry and `API_PUBLIC_URL` pointed at `api.suluhutherapy.com` — the
+secondary/redirect domain — instead of the actual production API hostname,
+`api.suluhutherapy.co.ke`; left as-is, the custom domain would have
+attached to the wrong host at cutover time.
 
 ## Why a second Prisma major version
 

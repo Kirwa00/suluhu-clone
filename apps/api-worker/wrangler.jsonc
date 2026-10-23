@@ -6,7 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "workers_dev": true,
-  "routes": [{ "pattern": "api.suluhutherapy.com", "custom_domain": true }],
+  "routes": [{ "pattern": "api.suluhutherapy.co.ke", "custom_domain": true }],
 
   // Pooled Postgres connection to Neon, reached through Hyperdrive so the
   // Worker never holds a raw TCP pool itself. Create with:
@@ -524,7 +524,7 @@
   // API key, Google client id, ...) are set with `wrangler secret put` — see
   // apps/api-worker/README.md for the full list.
   "vars": {
-    "API_PUBLIC_URL": "https://api.suluhutherapy.com",
+    "API_PUBLIC_URL": "https://api.suluhutherapy.co.ke",
     "CORS_ORIGINS": "https://suluhutherapy.com,https://www.suluhutherapy.com,https://suluhutherapy.co.ke,http://localhost:3000",
     "PROVIDER_MODE": "mock",
     "MPESA_MODE": "mock",

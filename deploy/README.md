@@ -148,3 +148,15 @@ the API. `MPESA_MODE=live` additionally needs the PayHero callback
 (`https://api.suluhutherapy.co.ke/api/v1/payments/mpesa/callback`) registered
 with PayHero, and `SMS_MODE=live` gates therapist/admin OTP login — until it is
 live, those OTPs only appear in the API logs.
+
+## 8. Moving the API off this host (Cloudflare Workers cutover)
+
+This stack describes where `apps/api` (NestJS) runs *today*. `apps/api-worker`
+is a from-scratch port of the same API to Cloudflare Workers, kept in sync
+across five prior phases and ready to take over — see
+`apps/api-worker/README.md` for what it covers. **Cutting production traffic
+over to it is a separate, deliberate step**, not something that happens by
+deploying `apps/api-worker` on its own: see `deploy/CUTOVER.md` for the full
+runbook (data migration to Neon, documents to R2, the maintenance window,
+verification checklist, and rollback plan). Don't run that runbook casually —
+it moves real patient data between databases.

@@ -136,7 +136,7 @@ const providerMode = z.enum(['mock', 'live']);
  * storage dir -> DOCUMENTS R2 bucket) and SMTP_* -> RESEND_API_KEY.
  */
 export const envSchema = z.object({
-  API_PUBLIC_URL: z.string().url().default('https://api.suluhutherapy.com'),
+  API_PUBLIC_URL: z.string().url().default('https://api.suluhutherapy.co.ke'),
   CORS_ORIGINS: z.string().default('https://suluhutherapy.com'),
 
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 chars'),
