@@ -1,9 +1,10 @@
 # Suluhu Therapy Center — project notes for Claude
 
-NestJS API + Next.js web, Turborepo monorepo (npm workspaces). See `deploy/README.md`
-for the full production deploy stack (Docker Compose, Caddy, GitHub Actions).
+NestJS API + Next.js web, Turborepo monorepo (npm workspaces). Production is
+Cloudflare Workers: `apps/api-worker` (API, Neon + R2) and `apps/web` — see
+`deploy/CUTOVER.md`.
 
-## Production VPS
+## Legacy VPS (retired, never went live)
 
 - Host: HostAfrica VPS, IP `102.68.87.163`, hostname `suluhu-prod.suluhutherapy.co.ke`
 - Code lives at `/opt/suluhu` on the server, deployed via Docker Compose

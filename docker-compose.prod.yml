@@ -1,3 +1,7 @@
+# RETIRED — kept for reference only. This VPS stack never went live;
+# production is apps/api-worker + apps/web on Cloudflare Workers.
+# See deploy/README.md and deploy/CUTOVER.md.
+#
 # Single-host production stack (e.g. a Hetzner CPX31 running Docker).
 # Everything except Caddy stays on the internal network; Caddy terminates TLS
 # for suluhutherapy.co.ke (web), api.suluhutherapy.co.ke (API), and redirects

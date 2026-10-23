@@ -1,3 +1,6 @@
+# RETIRED — kept for reference only (legacy VPS stack, never went live).
+# Production is apps/api-worker + apps/web on Cloudflare Workers.
+#
 # TLS is issued by Let's Encrypt over HTTP-01, which works behind a proxied
 # Cloudflare record as long as Cloudflare's SSL mode is "Full (strict)".
 #
