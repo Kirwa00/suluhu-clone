@@ -6,6 +6,13 @@ import { requestId } from './middleware/request-id';
 import { accessLog } from './middleware/logging';
 import { withAuthContext } from './middleware/with-context';
 import { onError } from './lib/error-handler';
+import { createPrismaClient } from './db/prisma';
+import { createNotificationsService } from './lib/notifications';
+import {
+  processReminderMessage,
+  sweepDueReminders,
+  type ReminderJobMessage,
+} from './lib/reminders-service';
 import { errorEnvelope } from './lib/response';
 import { health } from './routes/health';
 import { auth } from './routes/auth';
@@ -15,6 +22,11 @@ import { admin } from './routes/admin';
 import { intake } from './routes/intake';
 import { appointments } from './routes/appointments';
 import { payments } from './routes/payments';
+import { conversations } from './routes/messaging';
+import { mood } from './routes/mood';
+import { content } from './routes/content';
+import { clinical } from './routes/clinical';
+import { therapist } from './routes/therapist';
 import type { AppEnv } from './types';
 
 const app = new Hono<AppEnv>();
@@ -69,6 +81,14 @@ api.use('/admin/*', withAuthContext());
 api.use('/intake/*', withAuthContext());
 api.use('/appointments/*', withAuthContext());
 api.use('/payments/*', withAuthContext());
+api.use('/conversations/*', withAuthContext());
+api.use('/mood/*', withAuthContext());
+api.use('/content/*', withAuthContext());
+api.use('/clinical-notes/*', withAuthContext());
+api.use('/treatment-plans/*', withAuthContext());
+api.use('/patients/*', withAuthContext());
+api.use('/clinical/*', withAuthContext());
+api.use('/therapist/*', withAuthContext());
 api.route('/auth', auth);
 api.route('/users', users);
 api.route('/therapists', therapists);
@@ -76,29 +96,57 @@ api.route('/admin', admin);
 api.route('/intake', intake);
 api.route('/appointments', appointments);
 api.route('/payments', payments);
+api.route('/conversations', conversations);
+api.route('/mood', mood);
+api.route('/content', content);
+// ClinicalController in apps/api has no @Controller() prefix — its routes
+// (clinical-notes/*, treatment-plans, patients/*, clinical/clients) are
+// each already fully-qualified, so this mounts at the api root.
+api.route('/', clinical);
+api.route('/therapist', therapist);
 
 app.route('/api/v1', api);
 
 export default {
   fetch: app.fetch,
 
-  // Placeholder consumer for the `suluhu-reminders` queue (wrangler.jsonc).
-  // Reminder delivery lands in Phase 5; until then, every message is
-  // acknowledged as a safe no-op rather than left to retry indefinitely.
-  async queue(batch: MessageBatch, _env: Bindings, _ctx: ExecutionContext): Promise<void> {
-    console.warn(
-      `suluhu-reminders: ${batch.messages.length} message(s) received before Phase 5 wiring — acking as no-op`,
-    );
-    batch.ackAll();
-  },
-
-  // Placeholder for the reminder-sweep cron trigger (wrangler.jsonc). Wired
-  // for real in Phase 5 (reminders.service.ts port).
-  async scheduled(
-    controller: ScheduledController,
-    _env: Bindings,
+  // Consumer for the `suluhu-reminders` queue (wrangler.jsonc) — port of
+  // apps/api's RemindersService.process(), one message per due reminder.
+  // Each message is acked or retried individually so one bad appointment
+  // lookup doesn't block the rest of the batch; wrangler.jsonc caps retries
+  // at 3 (max_retries), matching the queue's own dead-letter-free config.
+  async queue(
+    batch: MessageBatch<ReminderJobMessage>,
+    env: Bindings,
     _ctx: ExecutionContext,
   ): Promise<void> {
-    console.log(`Scheduled trigger fired (cron: ${controller.cron}) — no-op before Phase 5 wiring`);
+    const prisma = await createPrismaClient(env);
+    const notifications = createNotificationsService(env);
+    for (const message of batch.messages) {
+      try {
+        await processReminderMessage(prisma, notifications, message.body);
+        message.ack();
+      } catch (error) {
+        console.error(
+          `Failed to process reminder for appointment ${message.body.appointmentId} (offset ${message.body.offsetMins}m): ${
+            error instanceof Error ? error.stack : String(error)
+          }`,
+        );
+        message.retry();
+      }
+    }
+  },
+
+  // Reminder-sweep cron trigger (wrangler.jsonc, every 5 minutes) — port of
+  // the scheduling half of apps/api's RemindersService; see
+  // lib/reminders-service.ts for why this replaces BullMQ delayed jobs.
+  async scheduled(
+    controller: ScheduledController,
+    env: Bindings,
+    _ctx: ExecutionContext,
+  ): Promise<void> {
+    const prisma = await createPrismaClient(env);
+    const enqueued = await sweepDueReminders(prisma, env.REMINDERS_QUEUE);
+    console.log(`Reminder sweep (cron: ${controller.cron}) enqueued ${enqueued} reminder(s)`);
   },
 };

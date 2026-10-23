@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ReminderJobMessage } from './lib/reminders-service';
 
 /**
  * Cloudflare bindings declared in wrangler.jsonc, plus the string-valued vars
@@ -13,7 +14,7 @@ export interface Bindings {
   // --- Bindings (wrangler.jsonc) --------------------------------------
   HYPERDRIVE: Hyperdrive;
   DOCUMENTS: R2Bucket;
-  REMINDERS_QUEUE: Queue;
+  REMINDERS_QUEUE: Queue<ReminderJobMessage>;
   // One Rate Limiting binding per route — see the comment above these in
   // wrangler.jsonc for why (Nest's default tracker keys per-route, not just
   // per limit value).

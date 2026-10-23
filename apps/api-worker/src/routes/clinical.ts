@@ -29,11 +29,7 @@ clinical.post(
   async (c) => {
     const dto = soapNoteSchema.parse(await c.req.json().catch(() => ({})));
     const userId = must(c.get('user')).id;
-    const result = await must(c.get('ctx')).clinicalNotes.upsert(
-      userId,
-      dto,
-      requestContext(c),
-    );
+    const result = await must(c.get('ctx')).clinicalNotes.upsert(userId, dto, requestContext(c));
     return c.json(successEnvelope(result, c.get('requestId')));
   },
 );
@@ -77,11 +73,7 @@ clinical.post(
   async (c) => {
     const dto = treatmentPlanSchema.parse(await c.req.json().catch(() => ({})));
     const userId = must(c.get('user')).id;
-    const result = await must(c.get('ctx')).treatmentPlans.upsert(
-      userId,
-      dto,
-      requestContext(c),
-    );
+    const result = await must(c.get('ctx')).treatmentPlans.upsert(userId, dto, requestContext(c));
     return c.json(successEnvelope(result, c.get('requestId')));
   },
 );

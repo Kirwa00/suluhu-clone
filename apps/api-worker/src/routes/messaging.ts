@@ -10,32 +10,22 @@ import type { AppEnv } from '../types';
 // Port of apps/api's MessagingController (`conversations`).
 export const conversations = new Hono<AppEnv>();
 
-conversations.get(
-  '/',
-  rateLimit('RATE_LIMITER_CONVERSATIONS_LIST'),
-  requireAuth(),
-  async (c) => {
-    const user = must(c.get('user'));
-    const result = await must(c.get('ctx')).messaging.listConversations(user);
-    return c.json(successEnvelope(result, c.get('requestId')));
-  },
-);
+conversations.get('/', rateLimit('RATE_LIMITER_CONVERSATIONS_LIST'), requireAuth(), async (c) => {
+  const user = must(c.get('user'));
+  const result = await must(c.get('ctx')).messaging.listConversations(user);
+  return c.json(successEnvelope(result, c.get('requestId')));
+});
 
-conversations.post(
-  '/',
-  rateLimit('RATE_LIMITER_CONVERSATIONS_OPEN'),
-  requireAuth(),
-  async (c) => {
-    const dto = startConversationSchema.parse(await c.req.json().catch(() => ({})));
-    const user = must(c.get('user'));
-    const result = await must(c.get('ctx')).messaging.getOrCreate(
-      user,
-      dto.counterpartId,
-      requestContext(c),
-    );
-    return c.json(successEnvelope(result, c.get('requestId')));
-  },
-);
+conversations.post('/', rateLimit('RATE_LIMITER_CONVERSATIONS_OPEN'), requireAuth(), async (c) => {
+  const dto = startConversationSchema.parse(await c.req.json().catch(() => ({})));
+  const user = must(c.get('user'));
+  const result = await must(c.get('ctx')).messaging.getOrCreate(
+    user,
+    dto.counterpartId,
+    requestContext(c),
+  );
+  return c.json(successEnvelope(result, c.get('requestId')));
+});
 
 conversations.get(
   '/:id/messages',
@@ -57,12 +47,7 @@ conversations.post(
     const id = uuidSchema.parse(c.req.param('id'));
     const dto = sendMessageSchema.parse(await c.req.json().catch(() => ({})));
     const user = must(c.get('user'));
-    const result = await must(c.get('ctx')).messaging.send(
-      user,
-      id,
-      dto.body,
-      requestContext(c),
-    );
+    const result = await must(c.get('ctx')).messaging.send(user, id, dto.body, requestContext(c));
     return c.json(successEnvelope(result, c.get('requestId')), 201);
   },
 );

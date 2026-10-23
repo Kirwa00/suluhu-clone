@@ -6,22 +6,18 @@ adapters) + Cloudflare bindings instead of Express + raw Postgres/Redis
 connections. See the root `CLAUDE.md` / `Suluhu_Therapy_Center_SDLC_Documentation.md`
 for product context.
 
-**Status: Phases 1–4 (Foundation, Auth & users, Therapists & admin, Care
-flow).** `apps/api` is still the real backend — `apps/web`'s
-`NEXT_PUBLIC_API_URL` has not changed. This Worker exposes
-`/api/v1/health(/live|/ready)`, the full auth/users surface (register,
-login, email MFA, Google sign-in, refresh rotation, logout, OTP
-request/verify, password forgot/reset/change, `/auth/me`, `/users/me`),
-therapist self-service onboarding (credentials, availability, document
-upload via R2), public therapist discovery, admin onboarding approval +
-clinical alerts, PHQ-9/GAD-7/CAGE intake & triage, booking slots &
-appointments, the Daily.co video-session lifecycle, and M-Pesa payments
-(via PayHero, with Daraja-direct and PayHero callback webhooks). Clinical
-notes, messaging, notifications/reminders, mood, content, analytics, and
-audit land in Phase 5 (see the delivery plan in the PR/issue this shipped
-from) — and so does automated therapist payouts, which doesn't exist as a
-service in apps/api yet either (only a bare `Payout` Prisma model, read
-only by apps/api's analytics module).
+**Status: Phases 1–5 (Foundation; Auth & users; Therapists & admin; Care
+flow; Messaging, mood, content, clinical, analytics & payouts).**
+`apps/api` is still the real backend — `apps/web`'s `NEXT_PUBLIC_API_URL`
+has not changed. This Worker now exposes the full `/api/v1/...` surface:
+health, auth/users, therapist onboarding + discovery, admin approval +
+clinical alerts, intake & triage, booking + appointments, video sessions,
+M-Pesa payments, secure patient-therapist messaging, the mood journal,
+psychoeducation content (public + admin-authored), SOAP clinical notes +
+treatment plans + the aggregated patient health record (all PHI-encrypted
+and ABAC-gated), and admin analytics/revenue/payouts + the audit-log
+viewer. Appointment reminders are real too, just delivered differently
+than apps/api — see "Reminders" below. Only Phase 6 (cutover) remains.
 
 ## Why a second Prisma major version
 
@@ -269,6 +265,79 @@ second booking correctly falling back to paid; cross-party/cross-role
 access checks on appointments and session start/end; both callback
 webhooks safely no-opping on an unknown checkout id).
 
+## Messaging, mood, content, clinical, analytics & payouts (Phase 5) — what to know
+
+- **Reminders are real now, delivered differently than apps/api**:
+  apps/api's `RemindersService` schedules SMS reminders (24h/1h/15min
+  before a session) as BullMQ *delayed jobs* — one job enqueued the moment
+  an appointment is confirmed, carrying its own fire time. Cloudflare
+  Queues has no equivalent (no job-level delay + stable dedup key), so
+  `src/lib/reminders-service.ts` rebuilds this around the Cron Trigger
+  already declared in `wrangler.jsonc` instead: every 5 minutes,
+  `sweepDueReminders` scans for `SCHEDULED` appointments whose next
+  reminder instant just arrived and enqueues one `REMINDERS_QUEUE` message
+  per due reminder; the queue consumer (`processReminderMessage`, called
+  from `src/index.ts`'s `queue()` handler) re-checks the appointment is
+  still `SCHEDULED` — so a cancellation between the sweep and the send is
+  still honored — and sends. Because "due" is computed directly from
+  `Appointment.scheduledAt`/`.status` on every sweep, there's nothing to
+  schedule or cancel ahead of time: `scheduleForAppointment`/
+  `cancelForAppointment` (still called by `AppointmentsService`/
+  `PaymentsService`, unchanged from Phase 4) are now documented no-ops.
+  Verified end-to-end by hand via `wrangler dev --test-scheduled`'s
+  `/__scheduled` endpoint: a sweep found a due appointment, enqueued it,
+  the local queue simulator delivered it to the consumer, the SMS was
+  logged and a `Notification` row created; a second sweep immediately
+  after correctly enqueued 0 (the dedup check against that `Notification`
+  row held); cancelling the appointment and sweeping again also enqueued 0
+  (excluded by the `status: SCHEDULED` filter).
+- **`RemindersService.stats()`'s shape changed**: apps/api's version
+  reports BullMQ job counts (`waiting`/`delayed`/`active`/`completed`/
+  `failed`) — there's no equivalent job-state machine in the cron-sweep
+  design above. `GET /admin/reminders/stats` now returns
+  `{ sentLast24h, pendingInNext24h }` instead — a different shape, but
+  answering the same operational question ("is the pipeline keeping up").
+- **AI SOAP drafting**: same mock-only posture as every other AI provider
+  in this Worker (intake summary, CPB verification) — no live OpenAI
+  adapter exists on either backend, and `createAuthContext` logs apps/api's
+  same "no live adapter" warning if `AI_MODE=live`. The mock produces the
+  same `[THERAPIST TO CONFIRM ...]`-placeholder draft skeleton; it's an
+  optional assist, never required for storage (the therapist always writes/
+  reviews the real note via `POST /clinical-notes`).
+- **ABAC is the same `ClinicalAccessService` logic everywhere**: a
+  therapist may view a patient's clinical data only if an appointment
+  exists between them; a patient may view only their own; admins may view
+  any (for compliance — every access is still audited). This single
+  service backs SOAP notes, treatment plans, and the health record, so the
+  access rule can't drift between them, same as apps/api.
+- **Payouts live inside `AnalyticsService`, not a standalone module** —
+  this is apps/api's own structure, not a Worker-side simplification: there
+  never was a separate payouts controller to port. `POST /admin/payouts/
+  :therapistId/pay` is a mock M-Pesa B2C payout of a therapist's pending
+  balance (gross session revenue minus the 25% platform commission, minus
+  what's already been paid out); paying out a zero balance correctly
+  `409`s. Verified by hand: paid out a therapist's full pending balance,
+  confirmed the payout queue and `GET /therapist/earnings` both reflected
+  it, confirmed paying again `409`s, and confirmed the payout shows up in
+  `GET /admin/audit-log?action=payout`.
+- **Rate limiting**: same story as every prior phase — none of these
+  controllers carry an explicit `@Throttle(...)` in apps/api, so all 26 new
+  routes use the global default (100/min), one binding per route.
+
+**Known limitation, extended again**: every Phase 5 route that touches the
+database (conversations, messages, mood, content, clinical notes,
+treatment plans, health record, caseload, analytics/revenue/payouts,
+audit log) was verified by hand via `wrangler dev` rather than by a Vitest
+integration test, for the same `pg`-in-Miniflare reason as every prior
+phase. The reminder sweep/consumer pipeline is the one exception worth
+calling out: `test/reminders-service.spec.ts` *does* cover
+`sweepDueReminders`'s window and dedup logic in Vitest, without a real
+Postgres connection, by passing a minimal duck-typed fake in place of
+`PrismaClient` (the function only ever calls `.appointment.findMany`/
+`.notification.findMany` on it) — a pattern worth reusing for other
+DB-touching pure logic if a future phase has more of it. See the Phase 5
+PR description for the full manual test transcript.
+
 ## Deploying
 
 Cloudflare Workers Builds (recommended — fires on push, like the existing
@@ -364,7 +433,7 @@ npm run deploy      # wrangler deploy
 | `HYPERDRIVE`                         | Hyperdrive | Phase 1 (health, then everything DB-backed) |
 | `AUTH_KV`                            | KV         | Phase 2 (access-token blocklist, OTP issuance throttle) |
 | `DOCUMENTS`                          | R2 Bucket  | Phase 3 (therapist documents) |
-| `REMINDERS_QUEUE`                    | Queue      | Phase 5 (reminders) |
+| `REMINDERS_QUEUE`                    | Queue      | Phase 5 (reminder sweep → consumer, see "Reminders" above) |
 
 Rate Limiting bindings — one **per route**, not per limit value (see
 "Auth & users (Phase 2)" above for why):
@@ -374,9 +443,12 @@ Rate Limiting bindings — one **per route**, not per limit value (see
 | 10/min   | `RATE_LIMITER_AUTH_REGISTER`, `RATE_LIMITER_AUTH_LOGOUT`, `RATE_LIMITER_AUTH_PASSWORD_RESET`, `RATE_LIMITER_AUTH_PASSWORD_CHANGE`, `RATE_LIMITER_AUTH_TEST_OTP` |
 | 5/min    | `RATE_LIMITER_AUTH_LOGIN`, `RATE_LIMITER_AUTH_GOOGLE`, `RATE_LIMITER_AUTH_GOOGLE_REGISTER`, `RATE_LIMITER_AUTH_MFA_VERIFY`, `RATE_LIMITER_AUTH_OTP_VERIFY` |
 | 3/min    | `RATE_LIMITER_AUTH_OTP_REQUEST`, `RATE_LIMITER_AUTH_PASSWORD_FORGOT` |
-| 100/min  | `RATE_LIMITER_AUTH_REFRESH`, `RATE_LIMITER_AUTH_ME`, `RATE_LIMITER_USERS_ME_GET`, `RATE_LIMITER_USERS_ME_PATCH`, `RATE_LIMITER_THERAPISTS_CREDENTIALS`, `RATE_LIMITER_THERAPISTS_ONBOARDING`, `RATE_LIMITER_THERAPISTS_AVAILABILITY_GET`, `RATE_LIMITER_THERAPISTS_AVAILABILITY_PUT`, `RATE_LIMITER_THERAPISTS_DOCUMENTS_UPLOAD`, `RATE_LIMITER_THERAPISTS_DOCUMENTS_LIST`, `RATE_LIMITER_THERAPISTS_SEARCH`, `RATE_LIMITER_THERAPISTS_DETAIL`, `RATE_LIMITER_THERAPISTS_DOCUMENT_DOWNLOAD`, `RATE_LIMITER_ADMIN_THERAPISTS_LIST`, `RATE_LIMITER_ADMIN_THERAPISTS_DETAIL`, `RATE_LIMITER_ADMIN_THERAPISTS_REVIEW`, `RATE_LIMITER_ADMIN_ALERTS_LIST`, `RATE_LIMITER_ADMIN_ALERTS_COUNT`, `RATE_LIMITER_ADMIN_ALERTS_ACKNOWLEDGE`, `RATE_LIMITER_ADMIN_ALERTS_RESOLVE`, `RATE_LIMITER_INTAKE_SUBMIT`, `RATE_LIMITER_INTAKE_LATEST`, `RATE_LIMITER_INTAKE_HISTORY`, `RATE_LIMITER_THERAPISTS_SLOTS`, `RATE_LIMITER_APPOINTMENTS_CREATE`, `RATE_LIMITER_APPOINTMENTS_LIST`, `RATE_LIMITER_APPOINTMENTS_DETAIL`, `RATE_LIMITER_APPOINTMENTS_CANCEL`, `RATE_LIMITER_SESSIONS_ACCESS`, `RATE_LIMITER_SESSIONS_START`, `RATE_LIMITER_SESSIONS_END`, `RATE_LIMITER_PAYMENTS_MPESA_CALLBACK`, `RATE_LIMITER_PAYMENTS_PAYHERO_CALLBACK`, `RATE_LIMITER_PAYMENTS_STATUS` |
+| 100/min  | Every other `RATE_LIMITER_*` binding (72 in total) — one per route, across Phases 2–5. See `wrangler.jsonc` for the full list; too long to usefully enumerate here. |
 
-`queue()` and `scheduled()` handlers in `src/index.ts` are no-op placeholders
-today (they ack/log and return) so the Worker is valid and deployable before
-Phases 3–5 land — nothing is silently dropped, there's just nothing to do
-with it yet.
+`queue()` and `scheduled()` handlers in `src/index.ts` are fully wired as of
+Phase 5 — `scheduled()` runs the reminder sweep every 5 minutes (the cron
+trigger declared below) and `queue()` consumes `REMINDERS_QUEUE` to send
+each due reminder, per-message acked or retried. Test locally with
+`wrangler dev --test-scheduled`, which exposes a `GET /__scheduled` endpoint
+that fires `scheduled()` on demand (the local queue simulator then delivers
+any enqueued messages to `queue()` automatically).

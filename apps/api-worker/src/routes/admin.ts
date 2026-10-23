@@ -135,15 +135,10 @@ admin.post(
 // --- Psychoeducation content administration -------------------------------
 // Port of ContentController's admin routes (`admin/content*`).
 
-admin.get(
-  '/content',
-  rateLimit('RATE_LIMITER_ADMIN_CONTENT_LIST'),
-  ...requireAdmin,
-  async (c) => {
-    const result = await must(c.get('ctx')).content.adminList();
-    return c.json(successEnvelope(result, c.get('requestId')));
-  },
-);
+admin.get('/content', rateLimit('RATE_LIMITER_ADMIN_CONTENT_LIST'), ...requireAdmin, async (c) => {
+  const result = await must(c.get('ctx')).content.adminList();
+  return c.json(successEnvelope(result, c.get('requestId')));
+});
 
 admin.post(
   '/content',
@@ -192,15 +187,10 @@ admin.get('/revenue', rateLimit('RATE_LIMITER_ADMIN_REVENUE'), ...requireAdmin, 
   return c.json(successEnvelope(result, c.get('requestId')));
 });
 
-admin.get(
-  '/payouts',
-  rateLimit('RATE_LIMITER_ADMIN_PAYOUTS_LIST'),
-  ...requireAdmin,
-  async (c) => {
-    const result = await must(c.get('ctx')).analytics.payoutQueue();
-    return c.json(successEnvelope(result, c.get('requestId')));
-  },
-);
+admin.get('/payouts', rateLimit('RATE_LIMITER_ADMIN_PAYOUTS_LIST'), ...requireAdmin, async (c) => {
+  const result = await must(c.get('ctx')).analytics.payoutQueue();
+  return c.json(successEnvelope(result, c.get('requestId')));
+});
 
 admin.post(
   '/payouts/:therapistId/pay',
@@ -220,13 +210,8 @@ admin.post(
 
 const auditQuerySchema = paginationQuerySchema.extend({ action: z.string().trim().optional() });
 
-admin.get(
-  '/audit-log',
-  rateLimit('RATE_LIMITER_ADMIN_AUDIT_LOG'),
-  ...requireAdmin,
-  async (c) => {
-    const query = auditQuerySchema.parse(c.req.query());
-    const result = await must(c.get('ctx')).analytics.auditLog(query);
-    return c.json(successEnvelope(result, c.get('requestId')));
-  },
-);
+admin.get('/audit-log', rateLimit('RATE_LIMITER_ADMIN_AUDIT_LOG'), ...requireAdmin, async (c) => {
+  const query = auditQuerySchema.parse(c.req.query());
+  const result = await must(c.get('ctx')).analytics.auditLog(query);
+  return c.json(successEnvelope(result, c.get('requestId')));
+});
