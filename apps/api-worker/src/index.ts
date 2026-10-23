@@ -10,6 +10,8 @@ import { errorEnvelope } from './lib/response';
 import { health } from './routes/health';
 import { auth } from './routes/auth';
 import { users } from './routes/users';
+import { therapists } from './routes/therapists';
+import { admin } from './routes/admin';
 import type { AppEnv } from './types';
 
 const app = new Hono<AppEnv>();
@@ -52,13 +54,17 @@ app.notFound((c) =>
 const api = new Hono<AppEnv>();
 api.route('/health', health);
 
-// Auth/users both need the request-scoped service graph (Prisma, tokens,
-// otp, ...) — built once per request here, reused by every route and by
-// requireAuth() on the protected ones.
+// All of these need the request-scoped service graph (Prisma, tokens,
+// otp, therapists, ...) — built once per request here, reused by every
+// route and by requireAuth()/requireRole() on the protected ones.
 api.use('/auth/*', withAuthContext());
 api.use('/users/*', withAuthContext());
+api.use('/therapists/*', withAuthContext());
+api.use('/admin/*', withAuthContext());
 api.route('/auth', auth);
 api.route('/users', users);
+api.route('/therapists', therapists);
+api.route('/admin', admin);
 
 app.route('/api/v1', api);
 

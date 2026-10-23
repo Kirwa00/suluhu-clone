@@ -6,13 +6,16 @@ adapters) + Cloudflare bindings instead of Express + raw Postgres/Redis
 connections. See the root `CLAUDE.md` / `Suluhu_Therapy_Center_SDLC_Documentation.md`
 for product context.
 
-**Status: Phases 1–2 (Foundation, Auth & users).** `apps/api` is still the
-real backend — `apps/web`'s `NEXT_PUBLIC_API_URL` has not changed. This
-Worker exposes `/api/v1/health(/live|/ready)` and the full auth/users surface
-(register, login, email MFA, Google sign-in, refresh rotation, logout, OTP
-request/verify, password forgot/reset/change, `/auth/me`, `/users/me`).
-Therapists, payments, sessions, clinical notes, etc. land in later phases
-(see the delivery plan in the PR/issue this shipped from).
+**Status: Phases 1–3 (Foundation, Auth & users, Therapists & admin).**
+`apps/api` is still the real backend — `apps/web`'s `NEXT_PUBLIC_API_URL`
+has not changed. This Worker exposes `/api/v1/health(/live|/ready)`, the
+full auth/users surface (register, login, email MFA, Google sign-in,
+refresh rotation, logout, OTP request/verify, password forgot/reset/change,
+`/auth/me`, `/users/me`), therapist self-service onboarding (credentials,
+availability, document upload via R2), public therapist discovery, and
+admin onboarding approval + clinical alerts. Payments, sessions, clinical
+notes, etc. land in later phases (see the delivery plan in the PR/issue this
+shipped from).
 
 ## Why a second Prisma major version
 
@@ -102,6 +105,21 @@ cross-compatibility against fixtures captured from apps/api's actual (Node)
 implementations, JWT sign/verify/blocklist (no DB needed), and rate-limiter
 isolation.
 
+Phase 3's therapist/admin routes are all DB-backed too, so the same split
+applies: `test/cpb-verification.spec.ts`, `test/require-role.spec.ts`, and
+`test/document-storage.spec.ts` cover the pure/R2-only logic in Vitest (R2
+itself *does* run fine in this harness, unlike `pg`); every route that also
+touches Postgres (credentials submission, onboarding, availability, document
+upload/list/download, discovery search/detail, admin application
+review/approval, clinical alerts) was verified by hand via `wrangler dev`
+against local Postgres — therapist registration → credentials submission
+(including the mock CPB check) → availability → document upload → owner
+download (200) → cross-role download attempts (403 for a patient, 401 for
+no token) → admin list/detail/approve → discovery search/detail before and
+after approval (confirming the `verificationStatus=APPROVED` +
+`user.status=ACTIVE` gate) → clinical alerts list/count. See the Phase 3 PR
+description for the full transcript.
+
 ## Auth & users (Phase 2) — what to know
 
 - **Password hashing**: `bcryptjs` (pure JS) instead of native `bcrypt` —
@@ -139,6 +157,48 @@ isolation.
   boundary (`getLastMockMessage` only returns a value when the configured
   provider is actually the mock one) — so that extra gate isn't reproduced
   here. Still rate-limited (`RATE_LIMITER_AUTH_TEST_OTP`), same as `apps/api`.
+
+## Therapists & admin (Phase 3) — what to know
+
+- **R2 instead of local disk**: `R2DocumentStorageService` (`src/lib/
+  document-storage.ts`) replaces apps/api's `LocalDocumentStorageService` —
+  same opaque key format (`<therapistProfileId>/<uuid>-<sanitized-filename>`,
+  stored verbatim in `TherapistDocument.url`), same filename sanitizing. The
+  local-disk version validated the key to block path traversal outside its
+  root directory; R2 keys aren't filesystem paths, so that risk doesn't
+  exist here — the same key-shape check is kept anyway as a data-integrity
+  invariant (a key that doesn't match what `save()` ever produces means the
+  DB row was corrupted or tampered with).
+- **Multipart upload**: apps/api used `multer` (`FileInterceptor` +
+  `memoryStorage()`); Hono has no direct equivalent, so `routes/
+  therapists.ts` reads the upload via the Web-standard `c.req.formData()`
+  and does the same size (10MB) and MIME-type (`application/pdf`,
+  `image/jpeg`, `image/png`) checks `ParseFilePipe`'s validators did.
+- **CPB license verification**: still mock-only on both backends — no live
+  CPB-portal integration exists yet. `createAuthContext` logs the same
+  warning apps/api's `TherapistsModule` factory does if `PROVIDER_MODE`
+  is ever set to `live`.
+- **RBAC**: `requireRole(...)` (`src/middleware/require-role.ts`) is a new
+  per-route port of apps/api's `RolesGuard` (Phase 2 only needed
+  `requireAuth()` — no route was role-restricted beyond "any authenticated
+  user"). Always chained *after* `requireAuth()` and *after* `rateLimit(...)`
+  on each route, never as a blanket `.use()` — see the comment in
+  `routes/admin.ts` for why a blanket guard would reverse the
+  throttle → authenticate → authorize order apps/api's guards run in.
+- **Discovery is authenticated but unrestricted by role**: `GET /therapists`
+  and `GET /therapists/:id` have no apps/api `@Roles(...)` — they're reached
+  by any authenticated user (patients, mainly), just still behind
+  `requireAuth()` like every non-`@Public()` apps/api route.
+- **Document download is ownership-*or*-role gated**: `GET /therapists/
+  documents/:id/download` first requires the THERAPIST/ADMIN/SUPER_ADMIN
+  role (`requireRole`), then the service layer separately checks the
+  requester either owns the document's therapist profile or holds an admin
+  role — same two-layer check as apps/api's `TherapistDocumentsService
+  .download()`.
+- **Rate limiting**: none of these controllers carry an explicit
+  `@Throttle(...)` in apps/api, so all 16 new routes use the same global
+  default (100/min) as `RATE_LIMITER_AUTH_REFRESH` — still one binding
+  *per route*, for the same per-route-tracker reason as Phase 2.
 
 ## Deploying
 
@@ -245,7 +305,7 @@ Rate Limiting bindings — one **per route**, not per limit value (see
 | 10/min   | `RATE_LIMITER_AUTH_REGISTER`, `RATE_LIMITER_AUTH_LOGOUT`, `RATE_LIMITER_AUTH_PASSWORD_RESET`, `RATE_LIMITER_AUTH_PASSWORD_CHANGE`, `RATE_LIMITER_AUTH_TEST_OTP` |
 | 5/min    | `RATE_LIMITER_AUTH_LOGIN`, `RATE_LIMITER_AUTH_GOOGLE`, `RATE_LIMITER_AUTH_GOOGLE_REGISTER`, `RATE_LIMITER_AUTH_MFA_VERIFY`, `RATE_LIMITER_AUTH_OTP_VERIFY` |
 | 3/min    | `RATE_LIMITER_AUTH_OTP_REQUEST`, `RATE_LIMITER_AUTH_PASSWORD_FORGOT` |
-| 100/min  | `RATE_LIMITER_AUTH_REFRESH`, `RATE_LIMITER_AUTH_ME`, `RATE_LIMITER_USERS_ME_GET`, `RATE_LIMITER_USERS_ME_PATCH` |
+| 100/min  | `RATE_LIMITER_AUTH_REFRESH`, `RATE_LIMITER_AUTH_ME`, `RATE_LIMITER_USERS_ME_GET`, `RATE_LIMITER_USERS_ME_PATCH`, `RATE_LIMITER_THERAPISTS_CREDENTIALS`, `RATE_LIMITER_THERAPISTS_ONBOARDING`, `RATE_LIMITER_THERAPISTS_AVAILABILITY_GET`, `RATE_LIMITER_THERAPISTS_AVAILABILITY_PUT`, `RATE_LIMITER_THERAPISTS_DOCUMENTS_UPLOAD`, `RATE_LIMITER_THERAPISTS_DOCUMENTS_LIST`, `RATE_LIMITER_THERAPISTS_SEARCH`, `RATE_LIMITER_THERAPISTS_DETAIL`, `RATE_LIMITER_THERAPISTS_DOCUMENT_DOWNLOAD`, `RATE_LIMITER_ADMIN_THERAPISTS_LIST`, `RATE_LIMITER_ADMIN_THERAPISTS_DETAIL`, `RATE_LIMITER_ADMIN_THERAPISTS_REVIEW`, `RATE_LIMITER_ADMIN_ALERTS_LIST`, `RATE_LIMITER_ADMIN_ALERTS_COUNT`, `RATE_LIMITER_ADMIN_ALERTS_ACKNOWLEDGE`, `RATE_LIMITER_ADMIN_ALERTS_RESOLVE` |
 
 `queue()` and `scheduled()` handlers in `src/index.ts` are no-op placeholders
 today (they ack/log and return) so the Worker is valid and deployable before
