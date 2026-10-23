@@ -100,7 +100,7 @@ npm run deploy      # wrangler deploy
    non-secret) once you're ready to go live with a given provider.
 
 8. **Custom domain.** First `wrangler deploy` with the `routes` entry in
-   `wrangler.jsonc` (`api.suluhutherapy.co.ke`, which must be a zone in the same Cloudflare account) creates the DNS record and
+   `wrangler.jsonc` (`api.suluhutherapy.com` — the `suluhutherapy.com` zone is on Cloudflare; `.co.ke` isn't) creates the DNS record and
    certificate automatically, same as `apps/web`'s `suluhutherapy.com` — see
    `apps/web/CLOUDFLARE.md` for the general pattern. Delete any existing
    A/CNAME for that hostname first if one exists.

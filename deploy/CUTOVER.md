@@ -1,7 +1,7 @@
 # Fresh launch runbook: apps/api-worker on Cloudflare
 
 Production is `apps/api-worker` (Hono on Cloudflare Workers) at
-`https://api.suluhutherapy.co.ke`, with `apps/web` on the `suluhu-web` Worker.
+`https://api.suluhutherapy.com`, with `apps/web` on the `suluhu-web` Worker.
 There is no VPS and no data migration: the old VPS stack never went live, so
 the database and document bucket start empty.
 
@@ -10,9 +10,10 @@ Run everything from `apps/api-worker/` with Cloudflare credentials
 
 ## 0. Prerequisites
 
-- `suluhutherapy.co.ke` must be a zone in the same Cloudflare account — a
-  Worker custom domain can only attach to a hostname in a zone Cloudflare
-  serves. Delete any existing A/CNAME for `api.suluhutherapy.co.ke` first.
+- The API lives on `api.suluhutherapy.com` because `suluhutherapy.com` is the
+  Cloudflare zone (a Worker custom domain can only attach to a hostname in a
+  zone Cloudflare serves; `suluhutherapy.co.ke` isn't one). Delete any
+  existing A/CNAME for `api.suluhutherapy.com` first.
 - Pre-deploy checks, all green:
 
   ```bash
@@ -41,7 +42,7 @@ npx wrangler queues create suluhu-reminders
 
 Put the Hyperdrive and KV ids into `wrangler.jsonc` (replacing the
 `REPLACE_WITH_...` placeholders) and commit that change — the ids aren't
-secret. Confirm `routes` still says `api.suluhutherapy.co.ke`.
+secret. Confirm `routes` still says `api.suluhutherapy.com`.
 
 ## 3. Secrets
 
@@ -63,7 +64,7 @@ losing it means losing every encrypted record. Leave every `*_MODE` var on
 
 ```bash
 npx wrangler deploy
-curl -s https://api.suluhutherapy.co.ke/api/v1/health   # database.status: "up"
+curl -s https://api.suluhutherapy.com/api/v1/health   # database.status: "up"
 ```
 
 Then, against the live API: register a throwaway patient, complete email MFA
@@ -72,12 +73,12 @@ the token, and fetch `/api/v1/users/me`. Delete the throwaway user afterwards.
 
 After this, `.github/workflows/deploy-cloudflare-api.yml` redeploys on every
 green CI run on `main` (needs the `CLOUDFLARE_API_TOKEN` token to also have
-Hyperdrive, KV, R2 and Queues edit, plus DNS edit on `suluhutherapy.co.ke`).
+Hyperdrive, KV, R2 and Queues edit, plus DNS edit on `suluhutherapy.com`).
 
 ## 5. Web
 
 `apps/web/.env.production` already sets
-`NEXT_PUBLIC_API_URL=https://api.suluhutherapy.co.ke`. It's baked in at build
+`NEXT_PUBLIC_API_URL=https://api.suluhutherapy.com`. It's baked in at build
 time, so redeploy `apps/web` (`cd apps/web && npm run cf:deploy`, or push to
 `main`) and check registration/login on the live site hits the Worker API
 (Network tab or `wrangler tail`).

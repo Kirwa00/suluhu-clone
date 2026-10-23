@@ -1,10 +1,10 @@
 name: Deploy API (Cloudflare Workers)
 
-# Deploys apps/api-worker to the `suluhu-api` Worker on api.suluhutherapy.co.ke.
+# Deploys apps/api-worker to the `suluhu-api` Worker on api.suluhutherapy.com.
 # Fires after CI succeeds on main, or manually.
 # Requires repo secrets CLOUDFLARE_API_TOKEN (Workers Scripts:Edit, Workers
 # Routes:Edit, Hyperdrive:Edit, Workers KV Storage:Edit, Workers R2 Storage:Edit,
-# Queues:Edit, Zone:DNS:Edit on suluhutherapy.co.ke) and CLOUDFLARE_ACCOUNT_ID.
+# Queues:Edit, Zone:DNS:Edit on suluhutherapy.com) and CLOUDFLARE_ACCOUNT_ID.
 # Runtime secrets (JWT_*, PHI_ENCRYPTION_KEY, ...) live on the Worker itself via
 # `wrangler secret put` — never in this repo or workflow.
 on:
@@ -52,7 +52,7 @@ jobs:
       - name: Verify the live API
         run: |
           code=$(curl -s -o /dev/null -w '%{http_code}' --retry 5 --retry-delay 5 --retry-connrefused \
-            https://api.suluhutherapy.co.ke/api/v1/health)
+            https://api.suluhutherapy.com/api/v1/health)
           if [ "$code" != "200" ]; then
             echo "Health check returned $code, expected 200"
             exit 1

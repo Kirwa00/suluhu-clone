@@ -2,7 +2,7 @@
 
 > **Production does not run here.** The production API is `apps/api-worker`
 > on Cloudflare Workers (Neon Postgres via Hyperdrive, R2, KV, Queues) at
-> `api.suluhutherapy.co.ke`, and the web app is `apps/web` on Cloudflare
+> `api.suluhutherapy.com`, and the web app is `apps/web` on Cloudflare
 > Workers — see `deploy/CUTOVER.md` (launch runbook) and
 > `apps/api-worker/README.md`. The VPS stack below never went live and is kept
 > only as reference for self-hosters. Its SSH deploy workflow
