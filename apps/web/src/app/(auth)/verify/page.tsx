@@ -17,7 +17,7 @@ import { dashboardPathForRole, useAuth } from '@/lib/auth/auth-context';
 const schema = z.object({ code: otpCodeSchema });
 type FormValues = z.infer<typeof schema>;
 
-export default function VerifyPhonePage() {
+export default function VerifyEmailPage() {
   const router = useRouter();
   const { user, status, refreshUser } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export default function VerifyPhonePage() {
   const onSubmit = form.handleSubmit(async ({ code }) => {
     setFormError(null);
     try {
-      await authApi.verifyOtp(VerificationPurpose.PHONE_VERIFICATION, code);
+      await authApi.verifyOtp(VerificationPurpose.EMAIL_VERIFICATION, code);
       await refreshUser();
       router.replace(user ? dashboardPathForRole(user.role) : '/patient');
     } catch (err) {
@@ -43,7 +43,7 @@ export default function VerifyPhonePage() {
   const resend = async () => {
     setFormError(null);
     try {
-      await authApi.requestOtp(VerificationPurpose.PHONE_VERIFICATION);
+      await authApi.requestOtp(VerificationPurpose.EMAIL_VERIFICATION);
       setResent(true);
     } catch (err) {
       setFormError(err instanceof ApiClientError ? err.message : 'Could not resend the code.');
@@ -53,9 +53,9 @@ export default function VerifyPhonePage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">Verify your phone</CardTitle>
+        <CardTitle className="text-2xl">Verify your email</CardTitle>
         <CardDescription>
-          We sent a 6-digit code by SMS. Enter it below to activate your account.
+          We sent a 6-digit code to your email. Enter it below to activate your account.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

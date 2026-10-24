@@ -19,3 +19,6 @@ AT_USERNAME=
 AT_API_KEY=
 RESEND_API_KEY=
 GOOGLE_CLIENT_ID=
+
+# wrangler.jsonc sets EMAIL_MODE=live for production; keep local dev on mock.
+EMAIL_MODE=mock
