@@ -71,12 +71,15 @@ jobs:
 
       - name: Fail if email or phone already exists
         run: |
+          sql_escape() { printf '%s' "$1" | sed "s/'/''/g"; }
           url=$(npx -y neonctl@8 connection-string "$ADMIN_BRANCH" --project-id "$NEON_PROJECT_ID")
           echo "::add-mask::$url"
           echo "$url" > /tmp/db_url
-          existing=$(psql "$(cat /tmp/db_url)" -v ON_ERROR_STOP=1 -tA \
-            -v email="$ADMIN_EMAIL" -v phone="$ADMIN_PHONE" \
-            -c "SELECT count(*) FROM users WHERE email = :'email' OR phone = :'phone';")
+          esc_email=$(sql_escape "$ADMIN_EMAIL")
+          esc_phone=$(sql_escape "$ADMIN_PHONE")
+          existing=$(psql "$(cat /tmp/db_url)" -v ON_ERROR_STOP=1 -tA -c "
+            SELECT count(*) FROM users WHERE email = '$esc_email' OR phone = '$esc_phone';
+          ")
           echo "existing=$existing"
           if [ "$existing" != "0" ]; then
             echo "::error::Email or phone already in use — not creating a duplicate"
@@ -85,24 +88,24 @@ jobs:
 
       - name: Insert admin user
         run: |
-          psql "$(cat /tmp/db_url)" -v ON_ERROR_STOP=1 \
-            -v email="$ADMIN_EMAIL" \
-            -v phone="$ADMIN_PHONE" \
-            -v password_hash="$ADMIN_PASSWORD_HASH" \
-            -v first_name="$ADMIN_FIRST_NAME" \
-            -v last_name="$ADMIN_LAST_NAME" \
-            -v role="$ADMIN_ROLE" \
-            -c "
-              INSERT INTO users (
-                id, email, phone, password_hash, role, status,
-                first_name, last_name, locale,
-                email_verified_at, phone_verified_at, mfa_enabled,
-                accepted_terms_at, created_at, updated_at
-              ) VALUES (
-                gen_random_uuid(), :'email', :'phone', :'password_hash', :'role', 'ACTIVE',
-                :'first_name', :'last_name', 'en',
-                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true,
-                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-              )
-              RETURNING id, email, role, status, mfa_enabled;
-            "
+          sql_escape() { printf '%s' "$1" | sed "s/'/''/g"; }
+          esc_email=$(sql_escape "$ADMIN_EMAIL")
+          esc_phone=$(sql_escape "$ADMIN_PHONE")
+          esc_password_hash=$(sql_escape "$ADMIN_PASSWORD_HASH")
+          esc_first_name=$(sql_escape "$ADMIN_FIRST_NAME")
+          esc_last_name=$(sql_escape "$ADMIN_LAST_NAME")
+          esc_role=$(sql_escape "$ADMIN_ROLE")
+          psql "$(cat /tmp/db_url)" -v ON_ERROR_STOP=1 -c "
+            INSERT INTO users (
+              id, email, phone, password_hash, role, status,
+              first_name, last_name, locale,
+              email_verified_at, phone_verified_at, mfa_enabled,
+              accepted_terms_at, created_at, updated_at
+            ) VALUES (
+              gen_random_uuid(), '$esc_email', '$esc_phone', '$esc_password_hash', '$esc_role', 'ACTIVE',
+              '$esc_first_name', '$esc_last_name', 'en',
+              CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true,
+              CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            )
+            RETURNING id, email, role, status, mfa_enabled;
+          "
