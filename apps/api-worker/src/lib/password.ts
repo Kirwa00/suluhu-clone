@@ -7,9 +7,18 @@
  * the Workers Free plan's 10ms CPU-time-per-request cap at a secure cost
  * factor — confirmed in production as Cloudflare error 1102 on register/
  * login, roughly half the time (pure-JS bcrypt's timing isn't deterministic
- * enough to reliably stay under 10ms). `crypto.subtle` runs as native code
- * in the runtime, not interpreted JS, so PBKDF2 at a secure iteration count
- * comfortably fits under that cap without needing the Workers Paid plan.
+ * enough to reliably stay under 10ms).
+ *
+ * This does NOT just run at OWASP's 2023-recommended 600,000 iterations —
+ * confirmed live against production, Cloudflare's `crypto.subtle` PBKDF2
+ * itself hard-rejects any iteration count above 100,000 with
+ * `NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are not
+ * supported`. 100,000 is this platform's real ceiling, not a security
+ * choice — see PASSWORD_PBKDF2_ITERATIONS in src/env.ts. Whether 100,000
+ * itself reliably clears the Free plan's 10ms cap still needs its own live
+ * verification; "native code" alone doesn't guarantee it (a sandbox
+ * benchmark of 100,000 iterations via Node's Web Crypto measured ~18.6ms
+ * wall-clock, over the cap, though Cloudflare's edge CPUs may differ).
  *
  * Hash format: `pbkdf2$<iterations>$<salt-b64>$<derived-key-b64>` — the
  * iteration count travels with the hash so a future bump to
@@ -44,7 +53,7 @@ export class PasswordService {
 
 /** A fixed, valid-format hash used to equalize login timing on unknown accounts. */
 export const DUMMY_PASSWORD_HASH =
-  'pbkdf2$600000$3we/+RjaWO7td0HyQqGzFg==$rrB3LXikXWZHva2FifgP7oHYTmQib5AsMSOTW0JlYN4=';
+  'pbkdf2$100000$3we/+RjaWO7td0HyQqGzFg==$z5scO7FGMgPxKZ013YKianTU1Izr0j4uC4W27iOGdb0=';
 
 async function deriveBits(plain: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
   const keyMaterial = await crypto.subtle.importKey(

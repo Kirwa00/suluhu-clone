@@ -144,9 +144,12 @@ export const envSchema = z.object({
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('7d'),
   // PBKDF2-HMAC-SHA256 iteration count (see src/lib/password.ts for why
-  // bcrypt isn't used here) — OWASP's 2023 recommendation for this
-  // algorithm is 600,000+.
-  PASSWORD_PBKDF2_ITERATIONS: z.coerce.number().int().min(100_000).max(2_000_000).default(600_000),
+  // bcrypt isn't used here). OWASP's 2023 recommendation for this algorithm
+  // is 600,000+, but Cloudflare's crypto.subtle rejects anything above
+  // 100,000 with NotSupportedError — confirmed live against production
+  // (see password.ts's doc comment) — so 100,000 is this platform's actual
+  // ceiling, not a security choice.
+  PASSWORD_PBKDF2_ITERATIONS: z.coerce.number().int().min(50_000).max(100_000).default(100_000),
 
   PHI_ENCRYPTION_KEY: z
     .string()

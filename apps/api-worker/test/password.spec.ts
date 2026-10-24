@@ -3,7 +3,8 @@ import { DUMMY_PASSWORD_HASH, PasswordService } from '../src/lib/password';
 
 const PASSWORD = 'Str0ngPassw0rd!';
 // Low iteration count in tests only, to keep the suite fast — production
-// uses PASSWORD_PBKDF2_ITERATIONS (default 600,000, see src/env.ts).
+// uses PASSWORD_PBKDF2_ITERATIONS (default 100,000, Cloudflare's hard
+// ceiling for crypto.subtle PBKDF2 — see src/env.ts).
 const TEST_ITERATIONS = 1000;
 
 describe('PasswordService', () => {
@@ -44,7 +45,7 @@ describe('PasswordService', () => {
   });
 
   it('DUMMY_PASSWORD_HASH is a valid, verifiable hash used to equalize login timing', async () => {
-    const service = new PasswordService(600_000);
+    const service = new PasswordService(100_000);
     // Never actually matches a real password — just needs to be well-formed
     // so compare() does the full derivation work against it.
     expect(await service.compare('whatever the attacker typed', DUMMY_PASSWORD_HASH)).toBe(false);
