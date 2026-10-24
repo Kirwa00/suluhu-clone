@@ -55,6 +55,12 @@ export const adminApi = {
       { method: 'POST', body: input, accessToken: auth() },
     );
   },
+  updateSessionRate(id: string, sessionRateKsh: number) {
+    return apiFetch<{ id: string; sessionRateKsh: number }>(
+      `/admin/therapists/applications/${id}/rate`,
+      { method: 'PATCH', body: { sessionRateKsh }, accessToken: auth() },
+    );
+  },
 
   listAlerts(params: { status?: string; page?: number; pageSize?: number } = {}) {
     const sp = new URLSearchParams();

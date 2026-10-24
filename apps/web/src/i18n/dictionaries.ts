@@ -292,6 +292,12 @@ export const dictionaries = {
     'adminReview.decision.approve': 'Approve',
     'adminReview.decision.reject': 'Reject',
     'adminReview.decision.suspend': 'Suspend',
+    'adminReview.rate.current': 'Currently {rate} per session',
+    'adminReview.rate.inputLabel': 'Session rate (KES)',
+    'adminReview.rate.save': 'Save rate',
+    'adminReview.rate.saving': 'Saving…',
+    'adminReview.rate.saved': 'Session rate updated.',
+    'adminReview.detail.sessionRateBounds': 'Rate must be between KES {min} and KES {max}',
 
     // Admin revenue
     'revenue.title': 'Revenue',
@@ -813,6 +819,12 @@ export const dictionaries = {
     'adminReview.decision.approve': 'Idhinisha',
     'adminReview.decision.reject': 'Kataa',
     'adminReview.decision.suspend': 'Simamisha',
+    'adminReview.rate.current': 'Kwa sasa {rate} kwa kila kikao',
+    'adminReview.rate.inputLabel': 'Kiwango cha kikao (KES)',
+    'adminReview.rate.save': 'Hifadhi kiwango',
+    'adminReview.rate.saving': 'Inahifadhi…',
+    'adminReview.rate.saved': 'Kiwango cha kikao kimesasishwa.',
+    'adminReview.detail.sessionRateBounds': 'Kiwango kinapaswa kuwa kati ya KES {min} na KES {max}',
 
     // Admin revenue
     'revenue.title': 'Mapato',

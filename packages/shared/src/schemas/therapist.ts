@@ -24,6 +24,13 @@ const timeOfDay = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use 24-hour HH:
 
 const specialtyEnum = z.enum(THERAPY_SPECIALTIES as [string, ...string[]]);
 
+/** Shared by the therapist's own rate field and the admin override below (§13.1 bounds). */
+const sessionRateKshField = z.coerce
+  .number()
+  .int()
+  .min(SESSION_RATE_MIN_KSH, `Minimum rate is KES ${SESSION_RATE_MIN_KSH}`)
+  .max(SESSION_RATE_MAX_KSH, `Maximum rate is KES ${SESSION_RATE_MAX_KSH}`);
+
 /** Therapist submits / updates their professional credentials & public profile. */
 export const submitCredentialsSchema = z.object({
   cpbLicenseNumber: z.string().trim().min(3, 'Enter your CPB license number').max(40),
@@ -37,13 +44,17 @@ export const submitCredentialsSchema = z.object({
   specialties: z.array(specialtyEnum).min(1, 'Select at least one specialty').max(8),
   languages: z.array(z.string().trim().min(2)).min(1, 'Select at least one language').max(8),
   yearsExperience: z.coerce.number().int().min(0).max(60),
-  sessionRateKsh: z.coerce
-    .number()
-    .int()
-    .min(SESSION_RATE_MIN_KSH, `Minimum rate is KES ${SESSION_RATE_MIN_KSH}`)
-    .max(SESSION_RATE_MAX_KSH, `Maximum rate is KES ${SESSION_RATE_MAX_KSH}`),
+  sessionRateKsh: sessionRateKshField,
 });
 export type SubmitCredentialsInput = z.infer<typeof submitCredentialsSchema>;
+
+/**
+ * Admin override of a therapist's session rate — the therapist still sets
+ * their own rate during onboarding (above); this lets an admin correct or
+ * adjust it afterward, same KES bounds either way.
+ */
+export const adminUpdateSessionRateSchema = z.object({ sessionRateKsh: sessionRateKshField });
+export type AdminUpdateSessionRateInput = z.infer<typeof adminUpdateSessionRateSchema>;
 
 /** A single weekly availability window. */
 export const availabilitySlotSchema = z

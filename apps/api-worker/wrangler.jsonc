@@ -238,6 +238,12 @@
         "simple": { "limit": 100, "period": 60 }
       },
       {
+        "name": "RATE_LIMITER_ADMIN_THERAPISTS_RATE",
+        "type": "ratelimit",
+        "namespace_id": "1073",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
         "name": "RATE_LIMITER_ADMIN_ALERTS_LIST",
         "type": "ratelimit",
         "namespace_id": "1029",

@@ -2,13 +2,16 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReviewDecisionInput } from '@suluhu/shared';
+import { SESSION_RATE_MAX_KSH, SESSION_RATE_MIN_KSH } from '@suluhu/shared';
 import { ArrowLeft, Download, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiClientError } from '@/lib/api-client';
 import { adminApi } from '@/lib/api/admin-api';
@@ -34,12 +37,19 @@ export default function AdminApplicationReview() {
   const queryClient = useQueryClient();
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [rateInput, setRateInput] = useState('');
+  const [rateError, setRateError] = useState<string | null>(null);
+  const [rateSaved, setRateSaved] = useState(false);
 
   const { data: app, isLoading } = useQuery({
     queryKey: ['application', id],
     queryFn: () => adminApi.getApplication(id),
     enabled: Boolean(id),
   });
+
+  useEffect(() => {
+    if (app) setRateInput(app.sessionRateKsh != null ? String(app.sessionRateKsh) : '');
+  }, [app]);
 
   const mutation = useMutation({
     mutationFn: (input: ReviewDecisionInput) => adminApi.review(id, input),
@@ -51,6 +61,37 @@ export default function AdminApplicationReview() {
     onError: (err) =>
       setError(err instanceof ApiClientError ? err.message : t('adminReview.actionFailed')),
   });
+
+  const rateMutation = useMutation({
+    mutationFn: (sessionRateKsh: number) => adminApi.updateSessionRate(id, sessionRateKsh),
+    onSuccess: () => {
+      setRateSaved(true);
+      queryClient.invalidateQueries({ queryKey: ['application', id] });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+    },
+    onError: (err) =>
+      setRateError(err instanceof ApiClientError ? err.message : t('adminReview.actionFailed')),
+  });
+
+  const saveRate = () => {
+    setRateError(null);
+    setRateSaved(false);
+    const parsed = Number(rateInput);
+    if (
+      !Number.isInteger(parsed) ||
+      parsed < SESSION_RATE_MIN_KSH ||
+      parsed > SESSION_RATE_MAX_KSH
+    ) {
+      setRateError(
+        t('adminReview.detail.sessionRateBounds', {
+          min: SESSION_RATE_MIN_KSH,
+          max: SESSION_RATE_MAX_KSH,
+        }),
+      );
+      return;
+    }
+    rateMutation.mutate(parsed);
+  };
 
   const decide = (decision: ReviewDecisionInput['decision']) => {
     setError(null);
@@ -107,10 +148,6 @@ export default function AdminApplicationReview() {
                 }
               />
               <Detail
-                label={t('adminReview.detail.sessionRate')}
-                value={formatKsh(app.sessionRateKsh)}
-              />
-              <Detail
                 label={t('adminReview.detail.languages')}
                 value={app.languages.join(', ') || '—'}
               />
@@ -122,6 +159,46 @@ export default function AdminApplicationReview() {
                 label={t('adminReview.detail.submitted')}
                 value={formatDate(app.submittedAt)}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('adminReview.detail.sessionRate')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-on-surface-variant">
+                {t('adminReview.rate.current', { rate: formatKsh(app.sessionRateKsh) })}
+              </p>
+              {rateError && <Alert variant="error">{rateError}</Alert>}
+              {rateSaved && !rateError && (
+                <Alert variant="success">{t('adminReview.rate.saved')}</Alert>
+              )}
+              <div className="flex items-end gap-3">
+                <Field
+                  label={t('adminReview.rate.inputLabel')}
+                  htmlFor="sessionRateKsh"
+                  className="flex-1"
+                >
+                  <Input
+                    id="sessionRateKsh"
+                    type="number"
+                    inputMode="numeric"
+                    min={SESSION_RATE_MIN_KSH}
+                    max={SESSION_RATE_MAX_KSH}
+                    value={rateInput}
+                    onChange={(e) => {
+                      setRateInput(e.target.value);
+                      setRateSaved(false);
+                    }}
+                  />
+                </Field>
+                <Button onClick={saveRate} disabled={rateMutation.isPending}>
+                  {rateMutation.isPending
+                    ? t('adminReview.rate.saving')
+                    : t('adminReview.rate.save')}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

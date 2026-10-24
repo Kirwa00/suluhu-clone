@@ -170,6 +170,40 @@ export class AdminTherapistsService {
     return { id: profileId, verificationStatus: status };
   }
 
+  /**
+   * Admin override of a therapist's session rate (§13.1). The therapist
+   * still sets their own rate during onboarding — this lets an admin
+   * correct or adjust it afterward, for any verification status.
+   */
+  async updateSessionRate(
+    adminId: string,
+    profileId: string,
+    sessionRateKsh: number,
+    ctx: RequestContext,
+  ): Promise<{ id: string; sessionRateKsh: number }> {
+    const profile = await this.prisma.therapistProfile.findUnique({
+      where: { id: profileId },
+      select: { id: true, sessionRateKsh: true },
+    });
+    if (!profile) throw AppException.notFound('Therapist not found');
+
+    await this.prisma.therapistProfile.update({
+      where: { id: profileId },
+      data: { sessionRateKsh },
+    });
+
+    await this.audit.record({
+      userId: adminId,
+      action: 'admin.therapist.rate_updated',
+      resourceType: 'therapist_profile',
+      resourceId: profileId,
+      ...ctx,
+      metadata: { previousRateKsh: profile.sessionRateKsh, newRateKsh: sessionRateKsh },
+    });
+
+    return { id: profileId, sessionRateKsh };
+  }
+
   private async notifyOutcome(
     email: string,
     firstName: string,
