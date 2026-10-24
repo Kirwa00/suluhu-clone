@@ -6,6 +6,7 @@ import {
   type SoapNoteInput,
 } from '@suluhu/shared';
 import type { PrismaClient } from '../generated/prisma';
+import { AppException } from './app-exception';
 import type { AiSoapProvider, SoapDraft } from './ai-soap-provider';
 import type { AuditService } from './audit';
 import type { ClinicalAccessService } from './clinical-access-service';
@@ -94,12 +95,10 @@ export class ClinicalNotesService {
       where: { appointmentId },
       include: { appointment: { select: { scheduledAt: true } } },
     });
+    // Clinical notes are visible to treating therapists only — not patients or admins.
+    if (requester.role !== UserRole.THERAPIST) throw AppException.forbidden();
     if (!note) return null;
     await this.access.assertCanViewPatient(requester, note.patientId);
-    // Patients only see finalized notes.
-    if (requester.role === UserRole.PATIENT && note.status !== ClinicalNoteStatus.FINALIZED) {
-      return null;
-    }
     await this.audit.record({
       userId: requester.id,
       action: 'clinical_note.view',
@@ -112,15 +111,10 @@ export class ClinicalNotesService {
   }
 
   async listForPatient(patientId: string, requester: AuthUser): Promise<SoapNoteView[]> {
+    if (requester.role !== UserRole.THERAPIST) throw AppException.forbidden();
     await this.access.assertCanViewPatient(requester, patientId);
-    const where =
-      requester.role === UserRole.PATIENT
-        ? { patientId, status: ClinicalNoteStatus.FINALIZED }
-        : requester.role === UserRole.THERAPIST
-          ? { patientId, therapistId: requester.id }
-          : { patientId };
     const notes = await this.prisma.clinicalNote.findMany({
-      where,
+      where: { patientId, therapistId: requester.id },
       orderBy: { createdAt: 'desc' },
       include: { appointment: { select: { scheduledAt: true } } },
     });

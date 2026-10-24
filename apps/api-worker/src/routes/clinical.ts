@@ -51,6 +51,7 @@ clinical.get(
   '/clinical-notes/appointment/:appointmentId',
   rateLimit('RATE_LIMITER_CLINICAL_NOTES_BY_APPOINTMENT'),
   requireAuth(),
+  requireRole(UserRole.THERAPIST),
   async (c) => {
     const appointmentId = uuidSchema.parse(c.req.param('appointmentId'));
     const user = must(c.get('user'));
@@ -84,6 +85,7 @@ clinical.get(
   '/patients/:patientId/notes',
   rateLimit('RATE_LIMITER_PATIENTS_NOTES'),
   requireAuth(),
+  requireRole(UserRole.THERAPIST),
   async (c) => {
     const patientId = uuidSchema.parse(c.req.param('patientId'));
     const user = must(c.get('user'));

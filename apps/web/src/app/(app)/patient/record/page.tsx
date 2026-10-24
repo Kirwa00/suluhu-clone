@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeading } from '@/components/app/stat-card';
 import { clinicalApi } from '@/lib/api/clinical-api';
 import { useAuth } from '@/lib/auth/auth-context';
-import { formatDate, formatDateTimeEAT, humanizeEnum } from '@/lib/format';
+import { formatDateTimeEAT, humanizeEnum } from '@/lib/format';
 import { useT } from '@/i18n/locale-context';
 
 export default function PatientRecordPage() {
@@ -16,11 +16,6 @@ export default function PatientRecordPage() {
   const { data: record } = useQuery({
     queryKey: ['record', patientId],
     queryFn: () => clinicalApi.healthRecord(patientId as string),
-    enabled: Boolean(patientId),
-  });
-  const { data: notes } = useQuery({
-    queryKey: ['notes', patientId],
-    queryFn: () => clinicalApi.patientNotes(patientId as string),
     enabled: Boolean(patientId),
   });
 
@@ -94,41 +89,6 @@ export default function PatientRecordPage() {
                   </li>
                 ))}
               </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('patientRecord.notes.title')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!notes || notes.length === 0 ? (
-              <p className="text-sm text-on-surface-variant">{t('patientRecord.notes.empty')}</p>
-            ) : (
-              <div className="space-y-4">
-                {notes.map((n) => (
-                  <div key={n.id} className="rounded-md border border-outline-variant p-4 text-sm">
-                    <p className="mb-2 font-medium text-on-surface">
-                      {n.scheduledAt
-                        ? formatDate(n.scheduledAt)
-                        : t('patientRecord.notes.sessionNote')}
-                    </p>
-                    {[
-                      [t('record.note.field.subjective'), n.subjective],
-                      [t('record.note.field.objective'), n.objective],
-                      [t('record.note.field.assessment'), n.assessment],
-                      [t('record.note.field.plan'), n.plan],
-                    ].map(([l, v]) =>
-                      v ? (
-                        <p key={l as string} className="text-on-surface-variant">
-                          <strong className="text-on-surface">{l}:</strong> {v as string}
-                        </p>
-                      ) : null,
-                    )}
-                  </div>
-                ))}
-              </div>
             )}
           </CardContent>
         </Card>
