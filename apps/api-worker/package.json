@@ -19,7 +19,6 @@
     "@prisma/adapter-pg": "6.19.3",
     "@prisma/client": "6.19.3",
     "@suluhu/shared": "1.0.0",
-    "bcryptjs": "3.0.3",
     "hono": "4.13.13",
     "jose": "6.2.13",
     "pg": "8.23.1",
