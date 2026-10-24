@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Gender, TherapySpecialty } from '../enums';
 import { SESSION_RATE_MAX_KSH, SESSION_RATE_MIN_KSH } from '../constants';
 import {
+  adminUpdateSessionRateSchema,
   availabilitySlotSchema,
   reviewDecisionSchema,
   setAvailabilitySchema,
@@ -71,6 +72,21 @@ describe('submitCredentialsSchema', () => {
     expect(submitCredentialsSchema.safeParse({ ...VALID_CREDENTIALS, ...overrides }).success).toBe(
       false,
     );
+  });
+});
+
+describe('adminUpdateSessionRateSchema', () => {
+  it('accepts the same bounds as submitCredentialsSchema and coerces numeric strings', () => {
+    for (const sessionRateKsh of [SESSION_RATE_MIN_KSH, SESSION_RATE_MAX_KSH]) {
+      const parsed = adminUpdateSessionRateSchema.parse({ sessionRateKsh: String(sessionRateKsh) });
+      expect(parsed.sessionRateKsh).toBe(sessionRateKsh);
+    }
+  });
+
+  it('rejects rates outside the bounds', () => {
+    for (const sessionRateKsh of [SESSION_RATE_MIN_KSH - 1, SESSION_RATE_MAX_KSH + 1]) {
+      expect(adminUpdateSessionRateSchema.safeParse({ sessionRateKsh }).success).toBe(false);
+    }
   });
 });
 

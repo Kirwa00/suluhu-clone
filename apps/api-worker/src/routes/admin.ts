@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import {
   TherapistVerificationStatus,
   UserRole,
+  adminUpdateSessionRateSchema,
   contentResourceSchema,
   paginationQuerySchema,
   reviewDecisionSchema,
@@ -67,6 +68,24 @@ admin.post(
       adminId,
       id,
       dto,
+      requestContext(c),
+    );
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);
+
+admin.patch(
+  '/therapists/applications/:id/rate',
+  rateLimit('RATE_LIMITER_ADMIN_THERAPISTS_RATE'),
+  ...requireAdmin,
+  async (c) => {
+    const id = uuidSchema.parse(c.req.param('id'));
+    const dto = adminUpdateSessionRateSchema.parse(await c.req.json().catch(() => ({})));
+    const adminId = must(c.get('user')).id;
+    const result = await must(c.get('ctx')).adminTherapists.updateSessionRate(
+      adminId,
+      id,
+      dto.sessionRateKsh,
       requestContext(c),
     );
     return c.json(successEnvelope(result, c.get('requestId')));
