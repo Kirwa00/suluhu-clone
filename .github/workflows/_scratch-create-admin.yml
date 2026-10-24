@@ -1,0 +1,94 @@
+name: Scratch create admin account (temporary)
+
+# One-off: inserts a single ADMIN-role user directly into the Neon `users`
+# table. There is no public signup path for ADMIN/SUPER_ADMIN (registerSchema
+# only allows PATIENT/THERAPIST) by design, so provisioning the first admin
+# has to happen at the database layer. The password_hash input must already
+# be a PBKDF2 hash in the exact `pbkdf2$<iterations>$<salt-b64>$<key-b64>`
+# format apps/api-worker/src/lib/password.ts produces — this workflow never
+# sees or handles a plaintext password. Not meant to stay in the repo —
+# delete this file once the account is confirmed created.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Neon branch to insert into
+        default: main
+        required: true
+      email:
+        description: Admin login email
+        required: true
+      phone:
+        description: Kenyan-format phone (07XXXXXXXX), must be unique
+        required: true
+      first_name:
+        required: true
+      last_name:
+        required: true
+      password_hash:
+        description: PBKDF2 hash string (pbkdf2$iterations$salt$hash) — never a plaintext password
+        required: true
+      role:
+        description: ADMIN or SUPER_ADMIN
+        default: ADMIN
+        required: true
+
+jobs:
+  create-admin:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+    steps:
+      - name: Install postgresql client
+        run: sudo apt-get update -qq && sudo apt-get install -qq -y postgresql-client
+
+      - name: Validate inputs
+        run: |
+          case "${{ inputs.role }}" in
+            ADMIN|SUPER_ADMIN) ;;
+            *) echo "role must be ADMIN or SUPER_ADMIN"; exit 1 ;;
+          esac
+          case "${{ inputs.password_hash }}" in
+            pbkdf2\$*) ;;
+            *) echo "password_hash must be a pbkdf2\$... hash, not a plaintext password"; exit 1 ;;
+          esac
+
+      - name: Fail if email or phone already exists
+        run: |
+          url=$(npx -y neonctl@8 connection-string "${{ inputs.branch }}" --project-id "$NEON_PROJECT_ID")
+          echo "::add-mask::$url"
+          echo "$url" > /tmp/db_url
+          existing=$(psql "$(cat /tmp/db_url)" -v ON_ERROR_STOP=1 -tA \
+            -v email="${{ inputs.email }}" -v phone="${{ inputs.phone }}" \
+            -c "SELECT count(*) FROM users WHERE email = :'email' OR phone = :'phone';")
+          echo "existing=$existing"
+          if [ "$existing" != "0" ]; then
+            echo "::error::Email or phone already in use — not creating a duplicate"
+            exit 1
+          fi
+
+      - name: Insert admin user
+        run: |
+          psql "$(cat /tmp/db_url)" -v ON_ERROR_STOP=1 \
+            -v email="${{ inputs.email }}" \
+            -v phone="${{ inputs.phone }}" \
+            -v password_hash="${{ inputs.password_hash }}" \
+            -v first_name="${{ inputs.first_name }}" \
+            -v last_name="${{ inputs.last_name }}" \
+            -v role="${{ inputs.role }}" \
+            -c "
+              INSERT INTO users (
+                id, email, phone, password_hash, role, status,
+                first_name, last_name, locale,
+                email_verified_at, phone_verified_at, mfa_enabled,
+                accepted_terms_at, created_at, updated_at
+              ) VALUES (
+                gen_random_uuid(), :'email', :'phone', :'password_hash', :'role', 'ACTIVE',
+                :'first_name', :'last_name', 'en',
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, true,
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+              )
+              RETURNING id, email, role, status, mfa_enabled;
+            "
