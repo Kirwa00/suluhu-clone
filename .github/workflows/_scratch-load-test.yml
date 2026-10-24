@@ -1,0 +1,45 @@
+name: Scratch load test (temporary)
+
+# One-off diagnostic: hits the live production API's register endpoint N
+# times in a row and reports the HTTP status of each, to measure whether a
+# given deploy clears the Workers Free plan's 10ms CPU-time cap (Cloudflare
+# error 1102) under the password-hashing change on this branch. Not meant
+# to stay in the repo — delete this file once the question is answered.
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: Number of sequential register requests to send
+        default: '20'
+        required: true
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hammer /api/v1/auth/register
+        run: |
+          set -u
+          pass=0
+          fail=0
+          for i in $(seq 1 "${{ github.event.inputs.count }}"); do
+            email="smoke-pbkdf2-$(date +%s)-$i-$RANDOM@example.com"
+            code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' --max-time 15 \
+              -X POST https://api.suluhutherapy.com/api/v1/auth/register \
+              -H 'Content-Type: application/json' \
+              -H 'Origin: https://suluhutherapy.com' \
+              -d "{\"email\":\"$email\",\"password\":\"Str0ngPassw0rd!\",\"firstName\":\"Smoke\",\"lastName\":\"Test\",\"role\":\"PATIENT\"}")
+            if [ "$code" = "201" ]; then
+              pass=$((pass + 1))
+              echo "[$i] 201 OK"
+            else
+              fail=$((fail + 1))
+              echo "[$i] $code FAIL"
+              cat /tmp/resp.json; echo
+            fi
+          done
+          echo "-----"
+          echo "pass=$pass fail=$fail total=$((pass + fail))"
+          if [ "$fail" -gt 0 ]; then
+            echo "::warning::$fail/$((pass + fail)) requests failed"
+          fi
