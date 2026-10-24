@@ -84,7 +84,7 @@ export interface AuthContext {
 export async function createAuthContext(env: Bindings, validated: Env): Promise<AuthContext> {
   const prisma = await createPrismaClient(env);
   const notifications = createNotificationsService(env);
-  const passwords = new PasswordService(validated.PASSWORD_SALT_ROUNDS);
+  const passwords = new PasswordService(validated.PASSWORD_PBKDF2_ITERATIONS);
   const tokens = new TokenService(prisma, env.AUTH_KV, {
     accessSecret: validated.JWT_ACCESS_SECRET,
     accessTtl: validated.JWT_ACCESS_TTL,
