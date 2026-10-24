@@ -108,7 +108,7 @@ export interface Bindings {
   JWT_REFRESH_SECRET: string;
   JWT_ACCESS_TTL?: string;
   JWT_REFRESH_TTL?: string;
-  PASSWORD_SALT_ROUNDS?: string;
+  PASSWORD_PBKDF2_ITERATIONS?: string;
   PHI_ENCRYPTION_KEY: string;
   MPESA_CALLBACK_URL?: string;
   PAYHERO_API_USERNAME?: string;
@@ -143,7 +143,10 @@ export const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 chars'),
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('7d'),
-  PASSWORD_SALT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
+  // PBKDF2-HMAC-SHA256 iteration count (see src/lib/password.ts for why
+  // bcrypt isn't used here) — OWASP's 2023 recommendation for this
+  // algorithm is 600,000+.
+  PASSWORD_PBKDF2_ITERATIONS: z.coerce.number().int().min(100_000).max(2_000_000).default(600_000),
 
   PHI_ENCRYPTION_KEY: z
     .string()
