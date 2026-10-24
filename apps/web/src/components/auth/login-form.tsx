@@ -28,9 +28,19 @@ const mfaFormSchema = z.object({ code: otpCodeSchema });
 type MfaForm = z.infer<typeof mfaFormSchema>;
 
 const ADMIN_ROLES: readonly UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
+const THERAPIST_ROLES: readonly UserRole[] = [UserRole.THERAPIST];
 
-/** Shared sign-in form; `adminOnly` backs the /login-admin page. */
-export function LoginForm({ adminOnly = false }: { adminOnly?: boolean }) {
+/**
+ * Shared sign-in form; `adminOnly` backs /login-admin and `therapistOnly`
+ * backs /login-therapist. At most one of the two is ever set.
+ */
+export function LoginForm({
+  adminOnly = false,
+  therapistOnly = false,
+}: {
+  adminOnly?: boolean;
+  therapistOnly?: boolean;
+}) {
   const router = useRouter();
   const { setSession, logout } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
@@ -48,6 +58,13 @@ export function LoginForm({ adminOnly = false }: { adminOnly?: boolean }) {
       await logout();
       setMfaToken(null);
       setFormError('This sign-in is for administrators only. Use the main sign-in page.');
+      return;
+    }
+    if (therapistOnly && !THERAPIST_ROLES.includes(user.role)) {
+      setSession(user, tokens);
+      await logout();
+      setMfaToken(null);
+      setFormError('This sign-in is for therapists only. Use the main sign-in page.');
       return;
     }
     setSession(user, tokens);
@@ -105,14 +122,22 @@ export function LoginForm({ adminOnly = false }: { adminOnly?: boolean }) {
     <Card>
       <CardHeader>
         <CardTitle className="text-2xl">
-          {mfaToken ? 'Verify it’s you' : adminOnly ? 'Admin sign in' : 'Welcome back'}
+          {mfaToken
+            ? 'Verify it’s you'
+            : adminOnly
+              ? 'Admin sign in'
+              : therapistOnly
+                ? 'Therapist sign in'
+                : 'Welcome back'}
         </CardTitle>
         <CardDescription>
           {mfaToken
             ? 'Enter the 6-digit code we sent to your email.'
             : adminOnly
               ? 'For Suluhu administrators only.'
-              : 'Sign in to continue your care journey.'}
+              : therapistOnly
+                ? 'For Suluhu therapists only.'
+                : 'Sign in to continue your care journey.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
