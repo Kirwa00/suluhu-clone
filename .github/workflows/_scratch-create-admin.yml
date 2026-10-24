@@ -8,6 +8,13 @@ name: Scratch create admin account (temporary)
 # format apps/api-worker/src/lib/password.ts produces — this workflow never
 # sees or handles a plaintext password. Not meant to stay in the repo —
 # delete this file once the account is confirmed created.
+#
+# All inputs are passed through `env:` and referenced as "$VAR", never
+# spliced inline via ${{ inputs.x }} into a run script body — a hash like
+# `pbkdf2$100000$...` inlined into a double-quoted string gets `$1` read as
+# bash's positional-parameter expansion (silently corrupting the value
+# before validation even runs), and inline interpolation of any input is a
+# shell-injection footgun regardless of its contents.
 on:
   workflow_dispatch:
     inputs:
@@ -40,28 +47,35 @@ jobs:
     env:
       NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
       NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+      ADMIN_BRANCH: ${{ inputs.branch }}
+      ADMIN_EMAIL: ${{ inputs.email }}
+      ADMIN_PHONE: ${{ inputs.phone }}
+      ADMIN_FIRST_NAME: ${{ inputs.first_name }}
+      ADMIN_LAST_NAME: ${{ inputs.last_name }}
+      ADMIN_PASSWORD_HASH: ${{ inputs.password_hash }}
+      ADMIN_ROLE: ${{ inputs.role }}
     steps:
       - name: Install postgresql client
         run: sudo apt-get update -qq && sudo apt-get install -qq -y postgresql-client
 
       - name: Validate inputs
         run: |
-          case "${{ inputs.role }}" in
+          case "$ADMIN_ROLE" in
             ADMIN|SUPER_ADMIN) ;;
             *) echo "role must be ADMIN or SUPER_ADMIN"; exit 1 ;;
           esac
-          case "${{ inputs.password_hash }}" in
-            pbkdf2\$*) ;;
+          case "$ADMIN_PASSWORD_HASH" in
+            'pbkdf2$'*) ;;
             *) echo "password_hash must be a pbkdf2\$... hash, not a plaintext password"; exit 1 ;;
           esac
 
       - name: Fail if email or phone already exists
         run: |
-          url=$(npx -y neonctl@8 connection-string "${{ inputs.branch }}" --project-id "$NEON_PROJECT_ID")
+          url=$(npx -y neonctl@8 connection-string "$ADMIN_BRANCH" --project-id "$NEON_PROJECT_ID")
           echo "::add-mask::$url"
           echo "$url" > /tmp/db_url
           existing=$(psql "$(cat /tmp/db_url)" -v ON_ERROR_STOP=1 -tA \
-            -v email="${{ inputs.email }}" -v phone="${{ inputs.phone }}" \
+            -v email="$ADMIN_EMAIL" -v phone="$ADMIN_PHONE" \
             -c "SELECT count(*) FROM users WHERE email = :'email' OR phone = :'phone';")
           echo "existing=$existing"
           if [ "$existing" != "0" ]; then
@@ -72,12 +86,12 @@ jobs:
       - name: Insert admin user
         run: |
           psql "$(cat /tmp/db_url)" -v ON_ERROR_STOP=1 \
-            -v email="${{ inputs.email }}" \
-            -v phone="${{ inputs.phone }}" \
-            -v password_hash="${{ inputs.password_hash }}" \
-            -v first_name="${{ inputs.first_name }}" \
-            -v last_name="${{ inputs.last_name }}" \
-            -v role="${{ inputs.role }}" \
+            -v email="$ADMIN_EMAIL" \
+            -v phone="$ADMIN_PHONE" \
+            -v password_hash="$ADMIN_PASSWORD_HASH" \
+            -v first_name="$ADMIN_FIRST_NAME" \
+            -v last_name="$ADMIN_LAST_NAME" \
+            -v role="$ADMIN_ROLE" \
             -c "
               INSERT INTO users (
                 id, email, phone, password_hash, role, status,
