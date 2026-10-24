@@ -83,6 +83,10 @@ jobs:
           echo "existing=$existing"
           if [ "$existing" != "0" ]; then
             echo "::error::Email or phone already in use — not creating a duplicate"
+            psql "$(cat /tmp/db_url)" -v ON_ERROR_STOP=1 -c "
+              SELECT email, phone, role, status, mfa_enabled, created_at FROM users
+              WHERE email = '$esc_email' OR phone = '$esc_phone';
+            "
             exit 1
           fi
 
