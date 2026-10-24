@@ -531,7 +531,8 @@
     "VIDEO_MODE": "mock",
     "AI_MODE": "mock",
     "SMS_MODE": "mock",
-    "EMAIL_MODE": "mock",
+    "EMAIL_MODE": "live",
+    "EMAIL_FROM": "Suluhu Therapy <no-reply@suluhutherapy.com>",
     "BEFRIENDERS_KENYA_HOTLINE": "0800723253"
   }
 }

@@ -85,9 +85,9 @@ export class AuthService {
 
     await this.otp.issue({
       userId: user.id,
-      purpose: VerificationPurpose.PHONE_VERIFICATION,
-      deliverTo: { phone: user.phone },
-      channel: 'sms',
+      purpose: VerificationPurpose.EMAIL_VERIFICATION,
+      deliverTo: { email: user.email },
+      channel: 'email',
     });
 
     await this.audit.record({
@@ -245,8 +245,11 @@ export class AuthService {
     if (purpose === VerificationPurpose.EMAIL_VERIFICATION) data.emailVerifiedAt = new Date();
 
     let updated = await this.prisma.user.update({ where: { id: userId }, data });
-    // Activate once phone is verified (primary channel in Kenya).
-    if (updated.status === UserStatus.PENDING_VERIFICATION && updated.phoneVerifiedAt) {
+    // Activate once email (the sign-up verification channel) or phone is verified.
+    if (
+      updated.status === UserStatus.PENDING_VERIFICATION &&
+      (updated.emailVerifiedAt || updated.phoneVerifiedAt)
+    ) {
       updated = await this.prisma.user.update({
         where: { id: userId },
         data: { status: UserStatus.ACTIVE },

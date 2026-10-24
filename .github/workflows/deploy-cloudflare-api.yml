@@ -5,7 +5,8 @@ name: Deploy API (Cloudflare Workers)
 # Requires repo secrets CLOUDFLARE_API_TOKEN (Workers Scripts:Edit, Workers
 # Routes:Edit, Hyperdrive:Edit, Workers KV Storage:Edit, Workers R2 Storage:Edit,
 # Queues:Edit, Zone:DNS:Edit on suluhutherapy.com) and CLOUDFLARE_ACCOUNT_ID.
-# Runtime secrets (JWT_*, PHI_ENCRYPTION_KEY, ...) live on the Worker itself via
+# RESEND_API_KEY is copied from the repo secret of the same name on each deploy.
+# Other runtime secrets (JWT_*, PHI_ENCRYPTION_KEY, ...) live on the Worker itself via
 # `wrangler secret put` — never in this repo or workflow.
 on:
   workflow_run:
@@ -41,6 +42,19 @@ jobs:
       - name: Generate Workers Prisma client
         working-directory: apps/api-worker
         run: npm run db:generate
+
+      - name: Set the Resend API key on the Worker
+        working-directory: apps/api-worker
+        run: |
+          if [ -z "$RESEND_API_KEY" ]; then
+            echo "Missing repo secret RESEND_API_KEY (EMAIL_MODE=live needs it for sign-up and login codes)."
+            exit 1
+          fi
+          printf '%s' "$RESEND_API_KEY" | npx wrangler secret put RESEND_API_KEY
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy
         working-directory: apps/api-worker
