@@ -24,11 +24,13 @@ jobs:
           fail=0
           for i in $(seq 1 "${{ github.event.inputs.count }}"); do
             email="smoke-pbkdf2-$(date +%s)-$i-$RANDOM@example.com"
+            phone="07$(printf '%08d' $((10000000 + RANDOM * 100 + i)))"
+            phone="${phone:0:10}"
             code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' --max-time 15 \
               -X POST https://api.suluhutherapy.com/api/v1/auth/register \
               -H 'Content-Type: application/json' \
               -H 'Origin: https://suluhutherapy.com' \
-              -d "{\"email\":\"$email\",\"password\":\"Str0ngPassw0rd!\",\"firstName\":\"Smoke\",\"lastName\":\"Test\",\"role\":\"PATIENT\"}")
+              -d "{\"email\":\"$email\",\"password\":\"Str0ngPassw0rd!\",\"firstName\":\"Smoke\",\"lastName\":\"Test\",\"phone\":\"$phone\",\"role\":\"PATIENT\",\"acceptedTerms\":true}")
             if [ "$code" = "201" ]; then
               pass=$((pass + 1))
               echo "[$i] 201 OK"
