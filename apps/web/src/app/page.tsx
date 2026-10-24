@@ -395,11 +395,16 @@ export default function HomePage() {
                 Reach clients across Kenya, set your own rates and get paid via M-Pesa.
               </p>
             </div>
-            <Button asChild variant="secondary">
-              <Link href="/register?role=therapist">
-                Apply to join <ArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button asChild variant="ghost" className="text-primary">
+                <Link href="/login-therapist">Therapist log in</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="/register?role=therapist">
+                  Apply to join <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </Button>
+            </div>
           </div>
         </section>
 
@@ -458,6 +463,9 @@ export default function HomePage() {
             <h2 className="font-display font-semibold text-on-surface">For therapists</h2>
             <Link href="/register?role=therapist" className="hover:text-primary">
               Join Suluhu
+            </Link>
+            <Link href="/login-therapist" className="hover:text-primary">
+              Therapist log in
             </Link>
           </nav>
         </div>
