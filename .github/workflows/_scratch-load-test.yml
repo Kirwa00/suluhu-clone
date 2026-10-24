@@ -60,6 +60,24 @@ jobs:
           wait "$tail_pid" 2>/dev/null || true
           echo "===== wrangler tail output ====="
           cat /tmp/tail.log
+      - name: Test login (compare() path, both real and unknown accounts)
+        run: |
+          set -u
+          echo "--- login with correct password (real hash compare) ---"
+          code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' --max-time 15 \
+            -X POST https://api.suluhutherapy.com/api/v1/auth/login \
+            -H 'Content-Type: application/json' \
+            -H 'Origin: https://suluhutherapy.com' \
+            -d '{"email":"smoke-pbkdf2-tail-1792843217-1-22765@example.com","password":"Str0ngPassw0rd!"}')
+          echo "code=$code"; cat /tmp/resp.json; echo
+
+          echo "--- login with unknown email (DUMMY_PASSWORD_HASH compare path) ---"
+          code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' --max-time 15 \
+            -X POST https://api.suluhutherapy.com/api/v1/auth/login \
+            -H 'Content-Type: application/json' \
+            -H 'Origin: https://suluhutherapy.com' \
+            -d '{"email":"definitely-does-not-exist-xyz@example.com","password":"whatever123"}')
+          echo "code=$code"; cat /tmp/resp.json; echo
       - name: Hammer /api/v1/auth/register
         run: |
           set -u
