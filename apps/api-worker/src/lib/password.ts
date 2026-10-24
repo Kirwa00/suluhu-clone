@@ -63,7 +63,11 @@ export class PasswordService {
 export const DUMMY_PASSWORD_HASH =
   'pbkdf2$100000$3we/+RjaWO7td0HyQqGzFg==$z5scO7FGMgPxKZ013YKianTU1Izr0j4uC4W27iOGdb0=';
 
-async function deriveBits(plain: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
+async function deriveBits(
+  plain: string,
+  salt: Uint8Array,
+  iterations: number,
+): Promise<Uint8Array> {
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(plain),
@@ -79,7 +83,9 @@ async function deriveBits(plain: string, salt: Uint8Array, iterations: number): 
   return new Uint8Array(bits);
 }
 
-function parseHash(stored: string): { iterations: number; salt: Uint8Array; hash: Uint8Array } | null {
+function parseHash(
+  stored: string,
+): { iterations: number; salt: Uint8Array; hash: Uint8Array } | null {
   const parts = stored.split('$');
   if (parts.length !== 4 || parts[0] !== 'pbkdf2') return null;
   const iterations = Number(parts[1]);
