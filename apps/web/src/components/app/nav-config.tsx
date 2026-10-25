@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LibraryBig,
   MessageSquare,
+  Plug,
   Settings,
   ShieldCheck,
   Siren,
@@ -55,6 +56,7 @@ const adminNav: NavItem[] = [
   { labelKey: 'nav.content', href: '/admin/content', icon: LibraryBig },
   { labelKey: 'nav.revenue', href: '/admin/revenue', icon: CreditCard },
   { labelKey: 'nav.payouts', href: '/admin/payouts', icon: Wallet },
+  { labelKey: 'nav.payments', href: '/admin/payments', icon: Plug },
   { labelKey: 'nav.audit', href: '/admin/audit', icon: ShieldCheck },
   { labelKey: 'nav.settings', href: '/settings', icon: Settings },
 ];

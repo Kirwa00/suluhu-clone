@@ -6,6 +6,7 @@ import {
   contentResourceSchema,
   paginationQuerySchema,
   reviewDecisionSchema,
+  updatePaymentSettingsSchema,
   uuidSchema,
 } from '@suluhu/shared';
 import { z } from 'zod';
@@ -234,3 +235,29 @@ admin.get('/audit-log', rateLimit('RATE_LIMITER_ADMIN_AUDIT_LOG'), ...requireAdm
   const result = await must(c.get('ctx')).analytics.auditLog(query);
   return c.json(successEnvelope(result, c.get('requestId')));
 });
+
+// --- Payment provider integration (PayHero/M-Pesa) --------------------------
+// Admin-managed in place of Worker secrets + wrangler.jsonc — see
+// lib/payment-settings-service.ts.
+
+admin.get(
+  '/payments/settings',
+  rateLimit('RATE_LIMITER_ADMIN_PAYMENTS_SETTINGS_GET'),
+  ...requireAdmin,
+  async (c) => {
+    const result = await must(c.get('ctx')).paymentSettings.get();
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);
+
+admin.patch(
+  '/payments/settings',
+  rateLimit('RATE_LIMITER_ADMIN_PAYMENTS_SETTINGS_UPDATE'),
+  ...requireAdmin,
+  async (c) => {
+    const dto = updatePaymentSettingsSchema.parse(await c.req.json().catch(() => ({})));
+    const adminId = must(c.get('user')).id;
+    const result = await must(c.get('ctx')).paymentSettings.update(adminId, dto, requestContext(c));
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);

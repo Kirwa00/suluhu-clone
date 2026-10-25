@@ -18,3 +18,4 @@ export * from './schemas/therapist';
 export * from './schemas/booking';
 export * from './schemas/clinical-notes';
 export * from './schemas/engagement';
+export * from './schemas/payment-settings';

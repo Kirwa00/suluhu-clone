@@ -57,6 +57,7 @@ export const dictionaries = {
     'nav.content': 'Content',
     'nav.revenue': 'Revenue',
     'nav.payouts': 'Payouts',
+    'nav.payments': 'Payment integration',
     'nav.audit': 'Audit log',
 
     // Shared / common (appointments, messaging)
@@ -298,6 +299,37 @@ export const dictionaries = {
     'adminReview.rate.saving': 'Saving…',
     'adminReview.rate.saved': 'Session rate updated.',
     'adminReview.detail.sessionRateBounds': 'Rate must be between KES {min} and KES {max}',
+
+    'adminPayments.title': 'Payment integration',
+    'adminPayments.subtitle': 'Connect and manage PayHero/M-Pesa without touching code or secrets.',
+    'adminPayments.mode.title': 'Mode',
+    'adminPayments.mode.label': 'Payment mode',
+    'adminPayments.mode.mock': 'Mock (no real charges)',
+    'adminPayments.mode.live': 'Live (real M-Pesa charges via PayHero)',
+    'adminPayments.mode.mockHint':
+      'Bookings complete without contacting PayHero or M-Pesa — nothing is actually charged.',
+    'adminPayments.mode.liveHint':
+      'Bookings send a real STK Push via PayHero and charge the patient’s M-Pesa account.',
+    'adminPayments.payhero.title': 'PayHero credentials',
+    'adminPayments.payhero.subtitle':
+      'From your PayHero account dashboard. Required before switching to live mode.',
+    'adminPayments.payhero.username': 'API username',
+    'adminPayments.payhero.password': 'API password',
+    'adminPayments.payhero.passwordSetHint':
+      'A password is already saved — leave blank to keep it.',
+    'adminPayments.payhero.passwordUnsetHint': 'No password saved yet.',
+    'adminPayments.payhero.passwordPlaceholderSet': '••••••••  (leave blank to keep current)',
+    'adminPayments.payhero.passwordPlaceholderUnset': 'Enter the PayHero API password',
+    'adminPayments.payhero.channelId': 'Channel ID',
+    'adminPayments.payhero.baseUrl': 'API base URL',
+    'adminPayments.payhero.baseUrlHint': 'Leave blank to use PayHero’s default.',
+    'adminPayments.payhero.callbackUrl': 'Callback URL',
+    'adminPayments.payhero.callbackUrlHint': 'Give this URL to PayHero: {url}',
+    'adminPayments.save': 'Save payment settings',
+    'adminPayments.saving': 'Saving…',
+    'adminPayments.saved': 'Payment settings updated.',
+    'adminPayments.saveFailed': 'Could not save. Check the fields and try again.',
+    'adminPayments.lastUpdated': 'Last updated {date}',
 
     // Admin revenue
     'revenue.title': 'Revenue',
@@ -584,6 +616,7 @@ export const dictionaries = {
     'nav.content': 'Maudhui',
     'nav.revenue': 'Mapato',
     'nav.payouts': 'Malipo',
+    'nav.payments': 'Muunganisho wa malipo',
     'nav.audit': 'Kumbukumbu',
 
     // Shared / common (appointments, messaging)
@@ -825,6 +858,36 @@ export const dictionaries = {
     'adminReview.rate.saving': 'Inahifadhi…',
     'adminReview.rate.saved': 'Kiwango cha kikao kimesasishwa.',
     'adminReview.detail.sessionRateBounds': 'Kiwango kinapaswa kuwa kati ya KES {min} na KES {max}',
+
+    'adminPayments.title': 'Muunganisho wa malipo',
+    'adminPayments.subtitle': 'Unganisha na dhibiti PayHero/M-Pesa bila kugusa msimbo au siri.',
+    'adminPayments.mode.title': 'Hali',
+    'adminPayments.mode.label': 'Hali ya malipo',
+    'adminPayments.mode.mock': 'Jaribio (hakuna malipo halisi)',
+    'adminPayments.mode.live': 'Halisi (malipo halisi ya M-Pesa kupitia PayHero)',
+    'adminPayments.mode.mockHint':
+      'Uhifadhi unakamilika bila kuwasiliana na PayHero au M-Pesa — hakuna chochote kinachotozwa.',
+    'adminPayments.mode.liveHint':
+      'Uhifadhi hutuma STK Push halisi kupitia PayHero na kutoza akaunti ya M-Pesa ya mgonjwa.',
+    'adminPayments.payhero.title': 'Vitambulisho vya PayHero',
+    'adminPayments.payhero.subtitle':
+      'Kutoka kwa dashibodi ya akaunti yako ya PayHero. Vinahitajika kabla ya kubadilisha hadi hali halisi.',
+    'adminPayments.payhero.username': 'Jina la mtumiaji la API',
+    'adminPayments.payhero.password': 'Nenosiri la API',
+    'adminPayments.payhero.passwordSetHint': 'Nenosiri limehifadhiwa tayari — acha wazi kuliacha.',
+    'adminPayments.payhero.passwordUnsetHint': 'Hakuna nenosiri lililohifadhiwa bado.',
+    'adminPayments.payhero.passwordPlaceholderSet': '••••••••  (acha wazi kuliacha la sasa)',
+    'adminPayments.payhero.passwordPlaceholderUnset': 'Weka nenosiri la API la PayHero',
+    'adminPayments.payhero.channelId': 'Kitambulisho cha kituo',
+    'adminPayments.payhero.baseUrl': 'URL ya msingi ya API',
+    'adminPayments.payhero.baseUrlHint': 'Acha wazi kutumia chaguo-msingi la PayHero.',
+    'adminPayments.payhero.callbackUrl': 'URL ya mrejesho',
+    'adminPayments.payhero.callbackUrlHint': 'Mpe PayHero URL hii: {url}',
+    'adminPayments.save': 'Hifadhi mipangilio ya malipo',
+    'adminPayments.saving': 'Inahifadhi…',
+    'adminPayments.saved': 'Mipangilio ya malipo imesasishwa.',
+    'adminPayments.saveFailed': 'Imeshindikana kuhifadhi. Kagua sehemu na ujaribu tena.',
+    'adminPayments.lastUpdated': 'Ilisasishwa mwisho {date}',
 
     // Admin revenue
     'revenue.title': 'Mapato',

@@ -676,3 +676,26 @@ model Notification {
   @@index([userId])
   @@map("notifications")
 }
+
+/// Single-row table (fixed id) holding the live PayHero/M-Pesa integration
+/// config, so an admin can switch modes and set credentials from the admin
+/// area instead of editing Worker secrets and redeploying. The API worker
+/// falls back to its own env vars when no row exists yet (e.g. before the
+/// first admin save, or before this migration has run in an environment).
+/// payhero_api_password_enc is ciphertext (app-layer AES-256-GCM, same
+/// scheme as PHI fields) — never stored or returned in plaintext.
+model PaymentProviderSettings {
+  id String @id @db.Uuid
+
+  mpesaMode             String  @default("mock") @map("mpesa_mode")
+  payheroApiUsername    String? @map("payhero_api_username")
+  payheroApiPasswordEnc String? @map("payhero_api_password_enc")
+  payheroChannelId      Int?    @map("payhero_channel_id")
+  payheroBaseUrl        String? @map("payhero_base_url")
+  mpesaCallbackUrl      String? @map("mpesa_callback_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("payment_provider_settings")
+}

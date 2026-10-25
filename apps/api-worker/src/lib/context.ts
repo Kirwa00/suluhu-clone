@@ -26,6 +26,7 @@ import { createNotificationsService, type NotificationsService } from './notific
 import { OtpService } from './otp';
 import { PasswordService } from './password';
 import { PayHeroProvider } from './payhero-provider';
+import { PaymentSettingsService } from './payment-settings-service';
 import { PaymentsService } from './payments-service';
 import { PhiCryptoService } from './phi-crypto';
 import { RemindersService } from './reminders-service';
@@ -61,6 +62,7 @@ export interface AuthContext {
   intake: IntakeService;
   slots: SlotsService;
   payments: PaymentsService;
+  paymentSettings: PaymentSettingsService;
   appointments: AppointmentsService;
   video: VideoProvider;
   sessions: SessionsService;
@@ -115,16 +117,30 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
   }
   const ai: AiSummaryProvider = new MockAiSummaryProvider();
 
-  // `validateEnv` already rejects MPESA_MODE=live without these set, so the
-  // non-null assertions below only run once they're guaranteed present.
+  // Admin-managed PayHero config (DB) takes precedence over the static env
+  // vars below — the env vars are only a fallback for an environment where
+  // no admin has configured anything yet (e.g. local dev via .dev.vars).
+  const paymentSettings = new PaymentSettingsService(prisma, phi, audit);
+  const effectivePayment = await paymentSettings.getEffectiveConfig({
+    mode: validated.MPESA_MODE === 'live' ? 'live' : 'mock',
+    apiUsername: validated.PAYHERO_API_USERNAME,
+    apiPassword: validated.PAYHERO_API_PASSWORD,
+    channelId: validated.PAYHERO_CHANNEL_ID,
+    baseUrl: validated.PAYHERO_BASE_URL,
+    callbackUrl: validated.MPESA_CALLBACK_URL,
+  });
   const mpesa: MpesaProvider =
-    validated.MPESA_MODE === 'live'
+    effectivePayment.mode === 'live' &&
+    effectivePayment.apiUsername &&
+    effectivePayment.apiPassword &&
+    effectivePayment.channelId &&
+    effectivePayment.callbackUrl
       ? new PayHeroProvider({
-          apiUsername: validated.PAYHERO_API_USERNAME!,
-          apiPassword: validated.PAYHERO_API_PASSWORD!,
-          channelId: validated.PAYHERO_CHANNEL_ID!,
-          callbackUrl: validated.MPESA_CALLBACK_URL!,
-          baseUrl: validated.PAYHERO_BASE_URL,
+          apiUsername: effectivePayment.apiUsername,
+          apiPassword: effectivePayment.apiPassword,
+          channelId: effectivePayment.channelId,
+          callbackUrl: effectivePayment.callbackUrl,
+          baseUrl: effectivePayment.baseUrl,
         })
       : new MockMpesaProvider();
 
@@ -187,6 +203,7 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
     ),
     slots,
     payments,
+    paymentSettings,
     appointments: new AppointmentsService(prisma, slots, payments, audit, notifications, reminders),
     video,
     sessions: new SessionsService(prisma, audit, video),

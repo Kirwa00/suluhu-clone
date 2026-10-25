@@ -1,6 +1,16 @@
-import type { Paginated, ReviewDecisionInput } from '@suluhu/shared';
+import type { Paginated, ReviewDecisionInput, UpdatePaymentSettingsInput } from '@suluhu/shared';
 import { apiFetch } from '@/lib/api-client';
 import { tokenStore } from '@/lib/auth/token-store';
+
+export interface PaymentSettings {
+  mpesaMode: 'mock' | 'live';
+  payheroApiUsername: string | null;
+  payheroChannelId: number | null;
+  payheroBaseUrl: string | null;
+  mpesaCallbackUrl: string | null;
+  hasPayheroApiPassword: boolean;
+  updatedAt: string | null;
+}
 
 export interface ApplicationListItem {
   id: string;
@@ -82,6 +92,17 @@ export const adminApi = {
     return apiFetch<{ id: string; status: string }>(`/admin/clinical-alerts/${id}/resolve`, {
       method: 'POST',
       body: { note },
+      accessToken: auth(),
+    });
+  },
+
+  getPaymentSettings() {
+    return apiFetch<PaymentSettings>('/admin/payments/settings', { accessToken: auth() });
+  },
+  updatePaymentSettings(input: UpdatePaymentSettingsInput) {
+    return apiFetch<PaymentSettings>('/admin/payments/settings', {
+      method: 'PATCH',
+      body: input,
       accessToken: auth(),
     });
   },
