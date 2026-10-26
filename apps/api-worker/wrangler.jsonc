@@ -521,6 +521,18 @@
         "simple": { "limit": 100, "period": 60 }
       },
       {
+        "name": "RATE_LIMITER_ADMIN_SETTINGS_COMMISSION_GET",
+        "type": "ratelimit",
+        "namespace_id": "1076",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
+        "name": "RATE_LIMITER_ADMIN_SETTINGS_COMMISSION_UPDATE",
+        "type": "ratelimit",
+        "namespace_id": "1077",
+        "simple": { "limit": 100, "period": 60 }
+      },
+      {
         "name": "RATE_LIMITER_THERAPIST_EARNINGS",
         "type": "ratelimit",
         "namespace_id": "1072",

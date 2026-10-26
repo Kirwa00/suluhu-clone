@@ -1,15 +1,23 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { PLATFORM_COMMISSION_MAX, PLATFORM_COMMISSION_MIN } from '@suluhu/shared';
 import { CreditCard, Percent, Users, Wallet } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { PageHeading, StatCard } from '@/components/app/stat-card';
+import { ApiClientError } from '@/lib/api-client';
 import { analyticsApi } from '@/lib/api/analytics-api';
 import { formatKsh } from '@/lib/format';
 import { useT } from '@/i18n/locale-context';
 
 export default function AdminRevenuePage() {
   const t = useT();
+  const queryClient = useQueryClient();
   const { data: metrics } = useQuery({
     queryKey: ['admin-metrics'],
     queryFn: () => analyticsApi.adminMetrics(),
@@ -18,10 +26,106 @@ export default function AdminRevenuePage() {
     queryKey: ['admin-revenue'],
     queryFn: () => analyticsApi.revenue(),
   });
+  const { data: commission } = useQuery({
+    queryKey: ['platform-commission'],
+    queryFn: () => analyticsApi.getPlatformCommission(),
+  });
+
+  const [commissionPercent, setCommissionPercent] = useState('');
+  const [commissionError, setCommissionError] = useState<string | null>(null);
+  const [commissionSaved, setCommissionSaved] = useState(false);
+
+  useEffect(() => {
+    if (commission)
+      setCommissionPercent(String(Math.round(commission.platformCommissionRate * 100)));
+  }, [commission]);
+
+  const commissionMutation = useMutation({
+    mutationFn: () => {
+      const percent = Number(commissionPercent.trim());
+      return analyticsApi.updatePlatformCommission(percent / 100);
+    },
+    onSuccess: (updated) => {
+      setCommissionSaved(true);
+      setCommissionError(null);
+      queryClient.setQueryData(['platform-commission'], updated);
+      queryClient.invalidateQueries({ queryKey: ['admin-metrics'] });
+    },
+    onError: (err) => {
+      setCommissionSaved(false);
+      if (!(err instanceof ApiClientError)) {
+        setCommissionError(t('revenue.commission.saveFailed'));
+        return;
+      }
+      if (err.details) {
+        setCommissionError(
+          Object.entries(err.details)
+            .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+            .join(' · ') || err.message,
+        );
+      } else {
+        setCommissionError(err.message);
+      }
+    },
+  });
+
+  const saveCommission = () => {
+    setCommissionError(null);
+    setCommissionSaved(false);
+    const percent = Number(commissionPercent.trim());
+    if (!Number.isFinite(percent)) {
+      setCommissionError(t('revenue.commission.invalid'));
+      return;
+    }
+    commissionMutation.mutate();
+  };
 
   return (
     <div>
       <PageHeading title={t('revenue.title')} subtitle={t('revenue.subtitle')} />
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>{t('revenue.commission.title')}</CardTitle>
+          <CardDescription>
+            {t('revenue.commission.subtitle', {
+              min: PLATFORM_COMMISSION_MIN * 100,
+              max: PLATFORM_COMMISSION_MAX * 100,
+            })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {commissionError && <Alert variant="error">{commissionError}</Alert>}
+          {commissionSaved && !commissionError && (
+            <Alert variant="success">{t('revenue.commission.saved')}</Alert>
+          )}
+          <div className="flex items-end gap-3">
+            <Field
+              label={t('revenue.commission.inputLabel')}
+              htmlFor="platformCommissionRate"
+              className="max-w-xs"
+            >
+              <Input
+                id="platformCommissionRate"
+                type="number"
+                inputMode="numeric"
+                min={PLATFORM_COMMISSION_MIN * 100}
+                max={PLATFORM_COMMISSION_MAX * 100}
+                value={commissionPercent}
+                onChange={(e) => {
+                  setCommissionPercent(e.target.value);
+                  setCommissionSaved(false);
+                }}
+              />
+            </Field>
+            <Button onClick={saveCommission} disabled={commissionMutation.isPending}>
+              {commissionMutation.isPending
+                ? t('revenue.commission.saving')
+                : t('revenue.commission.save')}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

@@ -7,6 +7,7 @@ import {
   paginationQuerySchema,
   reviewDecisionSchema,
   updatePaymentSettingsSchema,
+  updatePlatformCommissionSchema,
   uuidSchema,
 } from '@suluhu/shared';
 import { z } from 'zod';
@@ -258,6 +259,36 @@ admin.patch(
     const dto = updatePaymentSettingsSchema.parse(await c.req.json().catch(() => ({})));
     const adminId = must(c.get('user')).id;
     const result = await must(c.get('ctx')).paymentSettings.update(adminId, dto, requestContext(c));
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);
+
+// --- Platform commission rate ----------------------------------------------
+// Admin-managed in place of the PLATFORM_COMMISSION_DEFAULT constant — see
+// lib/platform-settings-service.ts.
+
+admin.get(
+  '/settings/commission',
+  rateLimit('RATE_LIMITER_ADMIN_SETTINGS_COMMISSION_GET'),
+  ...requireAdmin,
+  async (c) => {
+    const result = await must(c.get('ctx')).platformSettings.get();
+    return c.json(successEnvelope(result, c.get('requestId')));
+  },
+);
+
+admin.patch(
+  '/settings/commission',
+  rateLimit('RATE_LIMITER_ADMIN_SETTINGS_COMMISSION_UPDATE'),
+  ...requireAdmin,
+  async (c) => {
+    const dto = updatePlatformCommissionSchema.parse(await c.req.json().catch(() => ({})));
+    const adminId = must(c.get('user')).id;
+    const result = await must(c.get('ctx')).platformSettings.update(
+      adminId,
+      dto.platformCommissionRate,
+      requestContext(c),
+    );
     return c.json(successEnvelope(result, c.get('requestId')));
   },
 );

@@ -19,3 +19,4 @@ export * from './schemas/booking';
 export * from './schemas/clinical-notes';
 export * from './schemas/engagement';
 export * from './schemas/payment-settings';
+export * from './schemas/platform-settings';
