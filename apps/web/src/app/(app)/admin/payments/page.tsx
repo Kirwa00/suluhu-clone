@@ -44,15 +44,23 @@ export default function AdminPaymentsSettings() {
   }, [settings]);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      adminApi.updatePaymentSettings({
+    mutationFn: () => {
+      const trimmedChannelId = channelId.trim();
+      const parsedChannelId = trimmedChannelId ? Number(trimmedChannelId) : undefined;
+      return adminApi.updatePaymentSettings({
         mpesaMode,
         payheroApiUsername: username.trim() || undefined,
         payheroApiPassword: password.trim() || undefined,
-        payheroChannelId: channelId.trim() ? Number(channelId.trim()) : undefined,
+        // Number("not-a-number") is NaN, which JSON.stringify turns into
+        // null — the schema's .optional() only skips undefined, so a null
+        // channel id trips validation ("must be positive") instead of being
+        // treated as "not provided". Guard it here so a bad entry is simply
+        // omitted (and reported by the same missing-field check as blank).
+        payheroChannelId: Number.isFinite(parsedChannelId) ? parsedChannelId : undefined,
         payheroBaseUrl: baseUrl.trim() || undefined,
         mpesaCallbackUrl: callbackUrl.trim() || undefined,
-      }),
+      });
+    },
     onSuccess: (updated) => {
       setSaved(true);
       setError(null);
@@ -61,7 +69,22 @@ export default function AdminPaymentsSettings() {
     },
     onError: (err) => {
       setSaved(false);
-      setError(err instanceof ApiClientError ? err.message : t('adminPayments.saveFailed'));
+      if (!(err instanceof ApiClientError)) {
+        setError(t('adminPayments.saveFailed'));
+        return;
+      }
+      // VALIDATION_FAILED's own message is always the generic "Validation
+      // failed" — the actual per-field reason lives in `details`, which was
+      // previously dropped on the floor here, leaving no way to tell what
+      // was wrong with the input.
+      if (err.details) {
+        const fieldMessages = Object.entries(err.details)
+          .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+          .join(' · ');
+        setError(fieldMessages || err.message);
+      } else {
+        setError(err.message);
+      }
     },
   });
 
