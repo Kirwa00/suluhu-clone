@@ -65,6 +65,11 @@ export interface TherapistEarnings {
   }[];
 }
 
+export interface PlatformCommissionSettings {
+  platformCommissionRate: number;
+  updatedAt: string | null;
+}
+
 function auth() {
   return tokenStore.access ?? undefined;
 }
@@ -96,5 +101,18 @@ export const analyticsApi = {
   },
   therapistEarnings() {
     return apiFetch<TherapistEarnings>('/therapist/earnings', { accessToken: auth() });
+  },
+
+  getPlatformCommission() {
+    return apiFetch<PlatformCommissionSettings>('/admin/settings/commission', {
+      accessToken: auth(),
+    });
+  },
+  updatePlatformCommission(platformCommissionRate: number) {
+    return apiFetch<PlatformCommissionSettings>('/admin/settings/commission', {
+      method: 'PATCH',
+      body: { platformCommissionRate },
+      accessToken: auth(),
+    });
   },
 };

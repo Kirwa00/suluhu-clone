@@ -345,6 +345,15 @@ export const dictionaries = {
     'revenue.table.sessions': 'Sessions',
     'revenue.table.gross': 'Gross',
     'revenue.table.therapistNet': 'Therapist net',
+    'revenue.commission.title': 'Platform commission',
+    'revenue.commission.subtitle':
+      'The platform-wide cut taken from every paid session, applied to all therapists. Must be between {min}% and {max}%.',
+    'revenue.commission.inputLabel': 'Commission (%)',
+    'revenue.commission.save': 'Save commission',
+    'revenue.commission.saving': 'Saving…',
+    'revenue.commission.saved': 'Platform commission updated.',
+    'revenue.commission.invalid': 'Enter a number.',
+    'revenue.commission.saveFailed': 'Could not save. Check the value and try again.',
 
     // Admin payouts
     'payouts.title': 'Therapist payouts',
@@ -903,6 +912,15 @@ export const dictionaries = {
     'revenue.table.sessions': 'Vikao',
     'revenue.table.gross': 'Jumla',
     'revenue.table.therapistNet': 'Mapato halisi ya mtibabu',
+    'revenue.commission.title': 'Kamisheni ya jukwaa',
+    'revenue.commission.subtitle':
+      'Asilimia inayotolewa kutoka kila kikao kilicholipwa, inatumika kwa watibabu wote. Lazima iwe kati ya {min}% na {max}%.',
+    'revenue.commission.inputLabel': 'Kamisheni (%)',
+    'revenue.commission.save': 'Hifadhi kamisheni',
+    'revenue.commission.saving': 'Inahifadhi…',
+    'revenue.commission.saved': 'Kamisheni ya jukwaa imesasishwa.',
+    'revenue.commission.invalid': 'Weka nambari.',
+    'revenue.commission.saveFailed': 'Imeshindikana kuhifadhi. Kagua thamani na ujaribu tena.',
 
     // Admin payouts
     'payouts.title': 'Malipo ya watibabu',

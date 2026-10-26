@@ -28,6 +28,7 @@ import { PasswordService } from './password';
 import { PayHeroProvider } from './payhero-provider';
 import { PaymentSettingsService } from './payment-settings-service';
 import { PaymentsService } from './payments-service';
+import { PlatformSettingsService } from './platform-settings-service';
 import { PhiCryptoService } from './phi-crypto';
 import { RemindersService } from './reminders-service';
 import { SessionsService } from './sessions-service';
@@ -63,6 +64,7 @@ export interface AuthContext {
   slots: SlotsService;
   payments: PaymentsService;
   paymentSettings: PaymentSettingsService;
+  platformSettings: PlatformSettingsService;
   appointments: AppointmentsService;
   video: VideoProvider;
   sessions: SessionsService;
@@ -121,6 +123,8 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
   // vars below — the env vars are only a fallback for an environment where
   // no admin has configured anything yet (e.g. local dev via .dev.vars).
   const paymentSettings = new PaymentSettingsService(prisma, phi, audit);
+  const platformSettings = new PlatformSettingsService(prisma, audit);
+  const commissionRate = await platformSettings.getEffectiveRate();
   const effectivePayment = await paymentSettings.getEffectiveConfig({
     mode: validated.MPESA_MODE === 'live' ? 'live' : 'mock',
     apiUsername: validated.PAYHERO_API_USERNAME,
@@ -204,6 +208,7 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
     slots,
     payments,
     paymentSettings,
+    platformSettings,
     appointments: new AppointmentsService(prisma, slots, payments, audit, notifications, reminders),
     video,
     sessions: new SessionsService(prisma, audit, video),
@@ -216,6 +221,6 @@ export async function createAuthContext(env: Bindings, validated: Env): Promise<
     clinicalNotes: new ClinicalNotesService(prisma, phi, clinicalAccess, audit, aiSoap),
     treatmentPlans: new TreatmentPlansService(prisma, phi, clinicalAccess, audit),
     healthRecord: new HealthRecordService(prisma, clinicalAccess, audit),
-    analytics: new AnalyticsService(prisma, audit),
+    analytics: new AnalyticsService(prisma, audit, commissionRate),
   };
 }

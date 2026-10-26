@@ -1,5 +1,4 @@
 import {
-  PLATFORM_COMMISSION_DEFAULT,
   PaymentStatus,
   TherapistVerificationStatus,
   UserRole,
@@ -11,8 +10,6 @@ import { AppException } from './app-exception';
 import type { AuditService } from './audit';
 import type { RequestContext } from './types';
 
-const COMMISSION = PLATFORM_COMMISSION_DEFAULT;
-
 function startOfMonth(): Date {
   const d = new Date();
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
@@ -23,6 +20,8 @@ export class AnalyticsService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly audit: AuditService,
+    /** Resolved once per request by context.ts — see PlatformSettingsService. */
+    private readonly commissionRate: number,
   ) {}
 
   /** Platform KPIs for the admin dashboard. */
@@ -62,10 +61,10 @@ export class AnalyticsService {
       revenue: {
         grossMtdKsh: grossMtd,
         grossAllTimeKsh: grossAllTime,
-        platformNetMtdKsh: Math.round(grossMtd * COMMISSION),
-        therapistEarningsMtdKsh: grossMtd - Math.round(grossMtd * COMMISSION),
+        platformNetMtdKsh: Math.round(grossMtd * this.commissionRate),
+        therapistEarningsMtdKsh: grossMtd - Math.round(grossMtd * this.commissionRate),
         paidSessionsMtd: mtd._count,
-        commissionRate: COMMISSION,
+        commissionRate: this.commissionRate,
       },
     };
   }
@@ -122,11 +121,11 @@ export class AnalyticsService {
       paidOutKsh: paidOut,
       pendingKsh: pending,
       sessions,
-      commissionRate: COMMISSION,
+      commissionRate: this.commissionRate,
       transactions: recent.map((p) => ({
         id: p.id,
         amountKsh: p.amountKsh,
-        netKsh: Math.round(p.amountKsh * (1 - COMMISSION)),
+        netKsh: Math.round(p.amountKsh * (1 - this.commissionRate)),
         patientName: `${p.appointment.patient.firstName} ${p.appointment.patient.lastName}`.trim(),
         paidAt: p.paidAt?.toISOString() ?? null,
       })),
@@ -241,6 +240,6 @@ export class AnalyticsService {
       where: { status: PaymentStatus.SUCCEEDED, appointment: { therapistId: therapistUserId } },
     });
     const gross = agg._sum.amountKsh ?? 0;
-    return { gross, net: Math.round(gross * (1 - COMMISSION)), sessions: agg._count };
+    return { gross, net: Math.round(gross * (1 - this.commissionRate)), sessions: agg._count };
   }
 }
