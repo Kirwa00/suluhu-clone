@@ -1,0 +1,36 @@
+name: _scratch-diagnose-video
+
+# TEMPORARY — diagnosing why the deploy-cloudflare-api.yml post-deploy health
+# check started failing with curl exit 23 right after VIDEO_MODE flipped to
+# live. Runs curl -v against the live health endpoint from a clean GitHub
+# Actions network vantage point (this sandbox can't reach the domain
+# directly). Delete this workflow once the root cause is found.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verbose curl against the custom domain
+        run: |
+          echo "=== custom domain, verbose ==="
+          curl -v --max-time 20 https://api.suluhutherapy.com/api/v1/health || echo "curl exit code: $?"
+
+      - name: Verbose curl against the workers.dev URL
+        run: |
+          echo "=== workers.dev URL, verbose ==="
+          curl -v --max-time 20 https://suluhu-api.emmanuelkirwa8.workers.dev/api/v1/health || echo "curl exit code: $?"
+
+      - name: Plain curl, no retry flags, several attempts
+        run: |
+          for i in 1 2 3; do
+            echo "=== attempt $i ==="
+            curl -s -o /tmp/body.txt -w 'http_code=%{http_code} exit=%{exitcode}\n' https://api.suluhutherapy.com/api/v1/health
+            echo "exit status: $?"
+            echo "--- body ---"
+            cat /tmp/body.txt
+            echo
+            sleep 2
+          done
