@@ -4,8 +4,8 @@ import { PLATFORM_COMMISSION_MAX, PLATFORM_COMMISSION_MIN } from '../constants';
 /**
  * Admin update to the platform-wide commission rate (see
  * apps/api-worker/src/lib/platform-settings-service.ts). A fraction, not a
- * percentage — 0.25 means 25%. Bounded by the same 20–30% band (§13.1) the
- * rate used to be hardcoded to.
+ * percentage — 0.25 means 25%. Bounded by PLATFORM_COMMISSION_MIN/MAX in
+ * ../constants.
  */
 export const updatePlatformCommissionSchema = z.object({
   platformCommissionRate: z.coerce

@@ -7,8 +7,8 @@ import type { RequestContext } from './types';
  * Admin-managed platform commission rate, stored in a single fixed row
  * instead of the PLATFORM_COMMISSION_DEFAULT constant — so an admin can
  * change the platform-wide cut from the admin area without a code change
- * and redeploy. A fraction (0.25 = 25%), bounded by the 20–30% band in
- * packages/shared/src/constants.ts.
+ * and redeploy. A fraction (0.25 = 25%), bounded by the
+ * PLATFORM_COMMISSION_MIN/MAX band in packages/shared/src/constants.ts.
  */
 const SINGLETON_ID = '00000000-0000-0000-0000-000000000001';
 
