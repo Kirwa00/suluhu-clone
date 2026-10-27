@@ -558,7 +558,7 @@
     "CORS_ORIGINS": "https://suluhutherapy.com,https://www.suluhutherapy.com,https://suluhutherapy.co.ke,http://localhost:3000",
     "PROVIDER_MODE": "mock",
     "MPESA_MODE": "mock",
-    "VIDEO_MODE": "mock",
+    "VIDEO_MODE": "live",
     "AI_MODE": "mock",
     "SMS_MODE": "mock",
     "EMAIL_MODE": "live",
