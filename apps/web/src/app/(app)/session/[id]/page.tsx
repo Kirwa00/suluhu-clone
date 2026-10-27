@@ -1,10 +1,12 @@
 'use client';
 
+import type { DailyCall } from '@daily-co/daily-js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Clock, Loader2, Mic, MicOff, PhoneOff, Video as VideoIcon, VideoOff } from 'lucide-react';
+import { Clock, Loader2, PhoneOff, Video as VideoIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { sessionsApi, type SessionAccess } from '@/lib/api/sessions-api';
@@ -184,8 +186,38 @@ function ConsultRoom({
   ending: boolean;
 }) {
   const t = useT();
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [connecting, setConnecting] = useState(true);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const { roomUrl, token } = data;
+
+  useEffect(() => {
+    if (!containerRef.current || !roomUrl || !token) return;
+
+    let call: DailyCall | undefined;
+    let cancelled = false;
+
+    import('@daily-co/daily-js').then(({ default: DailyIframe }) => {
+      if (cancelled || !containerRef.current) return;
+      call = DailyIframe.createFrame(containerRef.current, {
+        iframeStyle: { width: '100%', height: '100%', border: '0' },
+        showLeaveButton: true,
+        showFullscreenButton: true,
+      });
+      call.on('left-meeting', onLeave);
+      call.on('error', () => setJoinError(t('session.room.joinError')));
+      call
+        .join({ url: roomUrl, token })
+        .then(() => !cancelled && setConnecting(false))
+        .catch(() => !cancelled && setJoinError(t('session.room.joinError')));
+    });
+
+    return () => {
+      cancelled = true;
+      call?.destroy();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomUrl, token]);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -199,78 +231,35 @@ function ConsultRoom({
         </span>
       </div>
 
-      {/* Video stage (mock provider — real Daily.co iframe mounts here in production). */}
-      <div className="relative grid gap-3 rounded-xl bg-inverse-surface p-3 sm:grid-cols-2">
-        <VideoTile label={data.counterpartName} muted={false} />
-        <VideoTile label={t('session.room.you')} muted={!micOn} cameraOff={!camOn} />
-        <p className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-inverse-on-surface/50">
-          {t('session.room.secureRoom', { url: data.roomUrl ?? '' })}
-        </p>
-      </div>
+      {joinError && (
+        <Alert variant="error" className="mb-3">
+          {joinError}
+        </Alert>
+      )}
 
-      {/* Controls */}
-      <div className="mt-4 flex items-center justify-center gap-3">
-        <button
-          onClick={() => setMicOn((v) => !v)}
-          className={`flex h-12 w-12 items-center justify-center rounded-full ${
-            micOn
-              ? 'bg-surface-container text-on-surface'
-              : 'bg-error-container text-on-error-container'
-          }`}
-          aria-label={micOn ? t('session.room.muteAria') : t('session.room.unmuteAria')}
-        >
-          {micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-        </button>
-        <button
-          onClick={() => setCamOn((v) => !v)}
-          className={`flex h-12 w-12 items-center justify-center rounded-full ${
-            camOn
-              ? 'bg-surface-container text-on-surface'
-              : 'bg-error-container text-on-error-container'
-          }`}
-          aria-label={camOn ? t('session.room.cameraOffAria') : t('session.room.cameraOnAria')}
-        >
-          {camOn ? <VideoIcon className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-        </button>
-        <Button variant="destructive" onClick={onLeave} className="h-12 rounded-full px-6">
-          <PhoneOff className="h-5 w-5" />
-          {t('session.room.leave')}
-        </Button>
-        {onEnd && (
-          <Button onClick={onEnd} disabled={ending} className="h-12 rounded-full px-6">
+      <div
+        ref={containerRef}
+        className="aspect-video w-full overflow-hidden rounded-xl bg-inverse-surface"
+      />
+      {connecting && !joinError && (
+        <p className="mt-2 text-center text-xs text-on-surface-variant">
+          {t('session.room.connecting')}
+        </p>
+      )}
+
+      {onEnd && (
+        <div className="mt-4 flex justify-center">
+          <Button
+            variant="destructive"
+            onClick={onEnd}
+            disabled={ending}
+            className="h-12 rounded-full px-6"
+          >
+            <PhoneOff className="h-5 w-5" />
             {ending ? t('session.room.ending') : t('session.room.endSession')}
           </Button>
-        )}
-      </div>
-      <p className="mt-3 text-center text-xs text-on-surface-variant">
-        {t('session.room.mockNotice')}
-      </p>
-    </div>
-  );
-}
-
-function VideoTile({
-  label,
-  muted,
-  cameraOff,
-}: {
-  label: string;
-  muted: boolean;
-  cameraOff?: boolean;
-}) {
-  return (
-    <div className="relative flex aspect-video items-center justify-center rounded-lg bg-[#0f1c2c]">
-      {cameraOff ? (
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-container text-xl font-semibold text-on-primary">
-          {label[0]}
         </div>
-      ) : (
-        <span className="text-sm text-inverse-on-surface/70">{label}</span>
       )}
-      <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded bg-black/40 px-2 py-0.5 text-xs text-white">
-        {muted && <MicOff className="h-3 w-3" aria-hidden />}
-        {label}
-      </div>
     </div>
   );
 }
