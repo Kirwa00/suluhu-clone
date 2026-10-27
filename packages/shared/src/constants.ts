@@ -20,7 +20,7 @@ export const FREE_SESSIONS_PER_PATIENT = 1;
 
 /** Platform commission band on each paid session (§13.1). */
 export const PLATFORM_COMMISSION_MIN = 0.2;
-export const PLATFORM_COMMISSION_MAX = 0.3;
+export const PLATFORM_COMMISSION_MAX = 0.6;
 export const PLATFORM_COMMISSION_DEFAULT = 0.25;
 
 /** Therapist session-rate bounds in KES (§13.1). */

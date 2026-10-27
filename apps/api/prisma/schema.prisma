@@ -701,7 +701,7 @@ model PaymentProviderSettings {
 }
 
 /// Single-row table (fixed id) holding the platform-wide commission rate
-/// (§13.1's 20–30% band, default 25%) — previously a hardcoded constant
+/// (bounded by PLATFORM_COMMISSION_MIN/MAX, default 25%) — previously a hardcoded constant
 /// (PLATFORM_COMMISSION_DEFAULT) with no way for an admin to change it
 /// without a code change and redeploy. Same singleton-row pattern as
 /// PaymentProviderSettings; the API worker falls back to the constant when
