@@ -5,7 +5,9 @@ name: Deploy API (Cloudflare Workers)
 # Requires repo secrets CLOUDFLARE_API_TOKEN (Workers Scripts:Edit, Workers
 # Routes:Edit, Hyperdrive:Edit, Workers KV Storage:Edit, Workers R2 Storage:Edit,
 # Queues:Edit, Zone:DNS:Edit on suluhutherapy.com) and CLOUDFLARE_ACCOUNT_ID.
-# RESEND_API_KEY is copied from the repo secret of the same name on each deploy.
+# RESEND_API_KEY and DAILY_API_KEY/DAILY_DOMAIN are copied from the repo secrets
+# of the same names on each deploy (so a dashboard-only secret can never get
+# silently wiped by a `wrangler deploy` that doesn't know about it).
 # Other runtime secrets (JWT_*, PHI_ENCRYPTION_KEY, ...) live on the Worker itself via
 # `wrangler secret put` — never in this repo or workflow.
 on:
@@ -53,6 +55,21 @@ jobs:
           printf '%s' "$RESEND_API_KEY" | npx wrangler secret put RESEND_API_KEY
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Set the Daily.co credentials on the Worker
+        working-directory: apps/api-worker
+        run: |
+          if [ -z "$DAILY_API_KEY" ] || [ -z "$DAILY_DOMAIN" ]; then
+            echo "Missing repo secret DAILY_API_KEY and/or DAILY_DOMAIN (VIDEO_MODE=live needs both for consult-room video)."
+            exit 1
+          fi
+          printf '%s' "$DAILY_API_KEY" | npx wrangler secret put DAILY_API_KEY
+          printf '%s' "$DAILY_DOMAIN" | npx wrangler secret put DAILY_DOMAIN
+        env:
+          DAILY_API_KEY: ${{ secrets.DAILY_API_KEY }}
+          DAILY_DOMAIN: ${{ secrets.DAILY_DOMAIN }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 

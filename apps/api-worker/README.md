@@ -89,15 +89,23 @@ npm run deploy      # wrangler deploy
    | `PAYHERO_API_PASSWORD`   | Only once `MPESA_MODE=live`                          |
    | `PAYHERO_CHANNEL_ID`     | Only once `MPESA_MODE=live`                          |
    | `MPESA_CALLBACK_URL`     | Only once `MPESA_MODE=live`                          |
-   | `DAILY_API_KEY`          | Only once `VIDEO_MODE=live`                          |
-   | `DAILY_DOMAIN`           | Only once `VIDEO_MODE=live`                          |
    | `AT_USERNAME`            | Only once `SMS_MODE=live`                            |
    | `AT_API_KEY`             | Only once `SMS_MODE=live`                            |
-   | `RESEND_API_KEY`         | Only once `EMAIL_MODE=live` (Resend HTTP API, not SMTP) |
    | `GOOGLE_CLIENT_ID`       | Only if Sign in with Google is enabled               |
 
    Flip the `*_MODE` vars themselves in `wrangler.jsonc`'s `vars` block (they're
    non-secret) once you're ready to go live with a given provider.
+
+   `RESEND_API_KEY` (once `EMAIL_MODE=live`) and `DAILY_API_KEY`/`DAILY_DOMAIN`
+   (once `VIDEO_MODE=live`) are the exception: don't set these by hand via
+   `wrangler secret put` or the Cloudflare dashboard. Add them as **GitHub repo
+   secrets** instead (Settings → Secrets and variables → Actions) — the deploy
+   workflow (`.github/workflows/deploy-cloudflare-api.yml`) copies them onto the
+   Worker on every deploy. Setting `DAILY_API_KEY`/`DAILY_DOMAIN` only via the
+   dashboard turned out not to survive the next deploy in practice (the Worker
+   started 500ing on every request, `validateEnv()` failing its
+   `VIDEO_MODE=live requires: ...` check) — the repo-secret-backed deploy step
+   doesn't have that problem, since it re-applies them every time.
 
 8. **Custom domain.** First `wrangler deploy` with the `routes` entry in
    `wrangler.jsonc` (`api.suluhutherapy.com` — the `suluhutherapy.com` zone is on Cloudflare; `.co.ke` isn't) creates the DNS record and
