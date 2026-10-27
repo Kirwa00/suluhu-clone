@@ -566,17 +566,10 @@ export const dictionaries = {
     'session.status.unpaid': 'Payment is still pending for this session.',
     'session.room.title': 'Session with {name}',
     'session.room.live': 'Live',
-    'session.room.secureRoom': 'Secure WebRTC room · {url}',
-    'session.room.muteAria': 'Mute microphone',
-    'session.room.unmuteAria': 'Unmute microphone',
-    'session.room.cameraOffAria': 'Turn camera off',
-    'session.room.cameraOnAria': 'Turn camera on',
-    'session.room.leave': 'Leave',
     'session.room.ending': 'Ending…',
     'session.room.endSession': 'End session',
-    'session.room.mockNotice':
-      'This is a simulated consult room (mock video provider). With Daily.co credentials, the live encrypted video mounts in the stage above.',
-    'session.room.you': 'You',
+    'session.room.connecting': 'Connecting to your secure video room…',
+    'session.room.joinError': 'Could not connect to the video room. Please refresh and try again.',
   },
   sw: {
     'brand.name': 'Kituo cha Tiba cha Suluhu',
@@ -1135,17 +1128,11 @@ export const dictionaries = {
     'session.status.unpaid': 'Malipo bado yanasubiriwa kwa kikao hiki.',
     'session.room.title': 'Kikao na {name}',
     'session.room.live': 'Moja kwa moja',
-    'session.room.secureRoom': 'Chumba salama cha WebRTC · {url}',
-    'session.room.muteAria': 'Zima maikrofoni',
-    'session.room.unmuteAria': 'Washa maikrofoni',
-    'session.room.cameraOffAria': 'Zima kamera',
-    'session.room.cameraOnAria': 'Washa kamera',
-    'session.room.leave': 'Ondoka',
     'session.room.ending': 'Inamalizika…',
     'session.room.endSession': 'Maliza kikao',
-    'session.room.mockNotice':
-      'Hiki ni chumba cha majaribio cha ushauri (mtoa huduma wa video wa kuiga). Ukiwa na vyeti vya Daily.co, video halisi iliyofichwa itaonekana hapa.',
-    'session.room.you': 'Wewe',
+    'session.room.connecting': 'Inaunganisha kwenye chumba chako salama cha video…',
+    'session.room.joinError':
+      'Haikuweza kuunganisha kwenye chumba cha video. Tafadhali onyesha upya na ujaribu tena.',
   },
 } as const;
 
